@@ -1,0 +1,57 @@
+/* 响应式布局断点 */
+@media screen and (max-width: 1024px) {
+    .headlogo h2 {
+        font-size: 18px;
+    }
+
+    .headnav li a {
+        padding: 0 10px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .head {
+        padding: 10px;
+    }
+
+    .headlogo {
+        width: 100%;
+        text-align: center;
+    }
+
+    .headlink li {
+        display: inline-block;
+        float: none;
+    }
+
+    .menu-section {
+        margin: 5px;
+    }
+
+    .menu-header {
+        padding: 8px;
+    }
+
+    .menu-content a {
+        padding: 8px;
+    }
+}
+
+/* 动画效果 */
+.fade-enter {
+    opacity: 0;
+}
+
+.fade-enter-active {
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.fade-exit {
+    opacity: 1;
+}
+
+.fade-exit-active {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+} 

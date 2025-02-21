@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error</title>
+    <style>
+        body {
+            padding: 50px;
+            font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+        }
+        .error-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .error-message {
+            color: #d32f2f;
+            margin-bottom: 20px;
+        }
+        .error-detail {
+            color: #666;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1 class="error-message"><%= message || 'エラーが発生しました' %></h1>
+        <% if (locals.error && locals.error.stack) { %>
+            <div class="error-detail">
+                <pre><%= error.stack %></pre>
+            </div>
+        <% } %>
+        <p><a href="javascript:history.back()">戻る</a></p>
+    </div>
+</body>
+</html> 

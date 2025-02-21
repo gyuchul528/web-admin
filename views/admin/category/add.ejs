@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= isChild ? 'サブカテゴリー追加' : 'カテゴリー追加' %></title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 800px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .parent-info {
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1><%= isChild ? 'サブカテゴリー追加' : 'カテゴリー追加' %></h1>
+
+    <% if (isChild && parentCategory) { %>
+    <div class="parent-info">
+        <h3>親カテゴリー情報：</h3>
+        <p>名称：<%= parentCategory.name %></p>
+    </div>
+    <% } %>
+
+    <form id="categoryForm">
+        <div class="form-group">
+            <label for="name">カテゴリー名：</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="model_id">所属モデル：</label>
+            <select id="model_id" name="model_id" required>
+                <% models.forEach(function(model) { %>
+                    <option value="<%= model.id %>"><%= model.name %></option>
+                <% }); %>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="sort_order">表示順序：</label>
+            <input type="number" id="sort_order" name="sort_order" value="0">
+        </div>
+
+        <button type="submit">保存</button>
+    </form>
+
+    <script>
+        document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('name').value,
+                model_id: document.getElementById('model_id').value,
+                sort_order: document.getElementById('sort_order').value
+            };
+
+            try {
+                const response = await fetch('<%= isChild ? `/admin/category/addChild/${parentCategory.id}` : "/admin/category/add" %>', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('保存しました');
+                    window.location.href = '/admin/category/list';
+                } else {
+                    alert(result.message || '保存に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('保存に失敗しました');
+            }
+        });
+    </script>
+</body>
+</html> 

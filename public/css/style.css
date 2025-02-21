@@ -1,0 +1,314 @@
+@charset "utf-8";
+
+/* CSS Reset 開始 */
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,
+big,cite,code,del,dfn,em,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,
+dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td,article,
+aside,canvas,details,embed,figure,figcaption,footer,header,hgroup,menu,nav,output,ruby,section,
+summary,time,mark,audio,video {
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+    margin: 0;
+    padding: 0;
+}
+
+blockquote,q { quotes: none; }
+blockquote:before,blockquote:after,q:before,q:after { content: none; }
+table { border-collapse: collapse; border-spacing: 0; }
+/* CSS Reset 終了 */
+
+/* CSS公共スタイル開始 */
+body,th,td,button,input,select,textarea { 
+    font: 12px/1.62 "Yu Gothic", "Hiragino Kaku Gothic Pro", "Meiryo", "Microsoft Yahei", "Hiragino Sans GB", 
+    "Helvetica Neue", Helvetica, tahoma, arial, erdana, sans-serif; 
+    color: #333; 
+}
+ol,ul { list-style: none; }
+img { border: 0; vertical-align:middle; }
+a {
+    text-decoration: none;
+    outline: none;
+}
+
+h1 { font-size:36px; }
+h2 { font-size:30px; }
+h3 { font-size:24px; }
+h4{font-size:18px;}
+h5 {font-size:14px;}
+h6 {font-size:12px;}
+.left, .l {float:left;}
+.right, .r {float:right;}
+.clearfix, .cf {
+    zoom:1;
+}
+.clearfix:after, .cf:after {
+    content: ".";
+    display: block;
+    height: 0;
+    clear: both;
+    visibility: hidden;
+}
+.clear, .cl {
+    clear:both;
+}
+
+/* 公共スタイル開始 */
+/* 「ログインページスタイル開始 */
+.login {
+    width: 500px;
+    height: 340px;
+    background: #1696d7;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+}
+
+/* タイトル用のスタイルを追加 */
+.login h4{
+    text-align: center;
+    color: #ffffff;
+    padding: 10px 0;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.loginmain {
+    padding: 20px;
+}
+
+.login form ul {
+    width: 100%;
+    margin-left: 40px;
+}
+
+.login form ul li {
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+}
+
+.login form ul li span {
+    width: 100px;
+    color: #ffffff;
+    font-size: 14px;
+    text-align: right;
+    padding-right: 15px;
+}
+
+.login form ul li input[type="text"],
+.login form ul li input[type="password"] {
+    width: 235px;
+    height: 30px;
+    padding: 0 5px;
+}
+
+.login form ul li .verifyimg {
+    width: 235px;
+    margin-left: 100px;
+}
+
+.login form ul li .verifyimg img {
+    width: 250px;
+    height: 40px;
+    margin-left: 15px;
+}
+
+.login form ul li input[type="submit"] {
+    width: 80px;
+    height: 30px;
+    border: none;
+    background: #00497d;
+    color: #ffffff;
+    font-size: 14px;
+    margin-left: 115px;
+    cursor: pointer;
+}
+
+.login form ul li input[type="submit"]:hover {
+    background: #003359;
+}
+
+.loginmain * {
+    color: #ffffff;
+}
+
+/* ラベルテキストを確実に白くする */
+.loginmain ul li span {
+    display: block;
+    width: 100%;
+    height: 30px;
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #ffffff !important;
+}
+
+/* すべてのテキスト要素を白に */
+.loginmain,
+.loginmain ul,
+.loginmain ul li,
+.loginmain ul li span,
+.loginmain ul li label,
+.loginmain ul li div {
+    color: #ffffff !important;
+}
+
+/* フォーム要素のデフォルトカラーをオーバーライド */
+.loginmain input,
+.loginmain select,
+.loginmain textarea {
+    color: #333333;  /* 入力フィールドは黒のまま */
+}
+
+/* 重複しているスタイルを整理し、より具体的なセレクタを使用 */
+.login, .login h4, .loginmain, .loginmain ul, .loginmain ul li, .loginmain ul li span {
+    color: #ffffff;
+}
+.nav-icon {
+    width: 13px;  /* 或其他合适的尺寸 */
+    height: 13px;
+    vertical-align: middle;
+    margin-right: 3px;
+}
+.head {
+    width: 100%;
+    height: 75px;
+    background: #1283c1;
+    color: #ffffff;
+}
+.head a {
+    color: #ffffff;
+}
+.headlogo {
+    width: 183px;
+    height: 60px;
+    line-height: 60px;
+    text-align: center;
+    margin-top: 5px;
+}
+.head .headnav {
+    margin-top: 5px;
+}
+.head .headnav li {
+    float: left;
+    margin-right: 5px;
+}
+.head .headnav li a {
+    display: block;
+    width: 70px;
+    padding: 5px 0;
+    text-align: center;
+    background-color: #22b7eb;
+}
+
+.head .headnav li a img {
+    display: block;
+    margin: 0 auto 5px;
+    width: 32px;
+    height: 32px;
+}
+
+.head .headnav li a:hover {
+    background-color: #4bc0e8;
+}
+
+.head .headnav li.current-menu a {
+    width: 120px;
+    background-color: #62d2f9;
+}
+.head .headnav li.current-menu a:hover {
+    background-color: #4bc0e8;
+}
+.headlink {
+    margin: 50px 10px 0 0;
+}
+.headlink li {
+    float: left;
+}
+.headlink li a {
+    display: block;
+    padding-left: 20px;
+}
+
+/* 左メニューのスタイル */
+.leftmenu {
+    width: 183px;
+    float: left;
+    background: #f5f5f5;
+    min-height: calc(100vh - 75px);  /* 减去头部高度 */
+}
+
+.menu-section {
+    margin-bottom: 1px;  /* 减小间距 */
+}
+
+.menu-header {
+    background: #22b7eb;
+    color: #ffffff;
+    padding: 10px 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.menu-content {
+    background: #ffffff;
+    display: none;  /* 默认隐藏子菜单 */
+}
+
+.menu-content a {
+    display: block;
+    padding: 8px 15px 8px 25px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+}
+
+.menu-content a:hover {
+    background: #f0f0f0;
+    color: #22b7eb;
+}
+
+.menu-header .toggle-icon {
+    float: right;
+    transition: transform 0.3s;
+}
+
+.menu-header.active {
+    background: #1696d7;
+}
+
+.menu-header.active + .menu-content {
+    display: block;
+}
+
+.right-main {
+    position: absolute;
+    top: 75px;
+    left: 183px;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    background: #f5f5f5;
+}
+body.showleftmenu .right-main {
+    left: 183px;
+}
+body.hideleftmenu .right-main {
+    left: 0;
+}
+.right-content {
+    width: 100%;
+    height: 100%;
+    padding: 7px 0 0 7px;
+    background: #ffffff;
+}
+
+.right-content iframe {
+    width: 100%;
+    height: 100%;
+}

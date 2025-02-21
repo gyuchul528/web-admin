@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+     <link rel="stylesheet" type="text/css" href="/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン</title>
+    <script src="/js/jquery-3.5.1.min.js"></script>
+</head>
+<body>
+    <div class="login-container">
+        <h1>AdamSoft Backend</h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <label>管理人ID：</label>
+                <input type="text" name="username" id="username" required>
+            </div>
+            <div class="form-group">
+                <label>パスワード：</label>
+                <input type="password" name="password" id="password" required>
+            </div>
+            <div class="form-group">
+                <label>認証コード：</label>
+                <input type="text" name="verify" id="verify" required>
+                <div class="captcha-container">
+                    <img id="captchaImage" src="/captcha" alt="验证码" style="background-color: white; padding: 5px;">
+                    <button type="button" id="refreshCaptcha">刷新</button>
+                </div>
+            </div>
+            <button type="submit">ログイン</button>
+        </form>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // 刷新验证码
+            function refreshCaptcha() {
+                $('#captchaImage').attr('src', '/captcha?' + new Date().getTime());
+            }
+
+            // 点击刷新按钮时刷新验证码
+            $('#refreshCaptcha').click(function(e) {
+                e.preventDefault();
+                refreshCaptcha();
+            });
+
+            // 页面加载时也刷新一次验证码
+            refreshCaptcha();
+
+            // 处理登录
+            $('#loginForm').submit(function(e) {
+                e.preventDefault();
+                
+                $.ajax({
+                    url: '/login',
+                    method: 'POST',
+                    data: {
+                        username: $('#username').val(),
+                        password: $('#password').val(),
+                        verify: $('#verify').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            window.location.href = response.redirect;
+                        } else {
+                            alert(response.message);
+                            // 刷新验证码
+                            refreshCaptcha();
+                            $('#verify').val('');
+                        }
+                    },
+                    error: function() {
+                        alert('登录请求失败，请重试');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

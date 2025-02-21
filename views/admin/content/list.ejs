@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= category.name %> - 内容管理</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="content-container">
+        <div class="content-header">
+            <div class="header-title">
+                <h2><%= category.name %></h2>
+                <span class="total-count">共 <%= contents.length %> 条记录</span>
+            </div>
+            <a href="/admin/content/<%= category.slug %>/create" class="btn-create">
+                <i class="fas fa-plus"></i> 新規作成
+            </a>
+        </div>
+
+        <div class="content-list">
+            <% if (contents && contents.length > 0) { %>
+                <table class="content-table">
+                    <thead>
+                        <tr>
+                            <th width="60">ID</th>
+                            <th>タイトル</th>
+                            <th width="80">状態</th>
+                            <th width="80">閲覧数</th>
+                            <th width="160">作成日時</th>
+                            <th width="120">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% contents.forEach(function(content) { %>
+                            <tr>
+                                <td class="text-center"><%= content.id %></td>
+                                <td class="title-cell">
+                                    <div class="content-title"><%= content.title %></div>
+                                    <% if (content.thumbnail) { %>
+                                        <div class="thumbnail-icon">
+                                            <i class="fas fa-image" title="サムネイルあり"></i>
+                                        </div>
+                                    <% } %>
+                                </td>
+                                <td class="text-center">
+                                    <span class="status-badge status-<%= content.status %>">
+                                        <%= content.status === 1 ? '公開' : '非公開' %>
+                                    </span>
+                                </td>
+                                <td class="text-center"><%= content.views %></td>
+                                <td class="text-center"><%= new Date(content.created_at).toLocaleString('ja-JP') %></td>
+                                <td class="actions">
+                                    <a href="/admin/content/<%= category.slug %>/<%= content.id %>/edit" class="btn-edit">
+                                        編集
+                                    </a>
+                                    <button class="btn-delete" onclick="deleteContent(<%= content.id %>)">
+                                        削除
+                                    </button>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            <% } else { %>
+                <div class="no-content">
+                    <i class="fas fa-inbox"></i>
+                    <p>コンテンツがありません</p>
+                    <a href="/admin/content/<%= category.slug %>/create" class="btn-create">
+                        新規作成
+                    </a>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <script src="https://kit.fontawesome.com/your-code.js"></script>
+    <script>
+        function deleteContent(id) {
+            if (confirm('本当に削除しますか？')) {
+                fetch(`/admin/content/<%= category.slug %>/${id}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('削除に失敗しました');
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html> 
