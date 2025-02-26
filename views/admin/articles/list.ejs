@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= category.name %> - 記事一覧</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .operation-buttons {
+            margin-bottom: 20px;
+        }
+        .operation-buttons button {
+            padding: 5px 15px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        .thumbnail-cell {
+            width: 100px;
+            text-align: center;
+        }
+        .thumbnail {
+            max-width: 100px;
+            max-height: 60px;
+            object-fit: cover;
+        }
+        .title-cell {
+            max-width: 200px;
+        }
+        .title-text {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        .status-published {
+            color: green;
+        }
+        .status-draft {
+            color: gray;
+        }
+        .summary {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .order-input {
+            width: 60px;
+            padding: 2px;
+            text-align: center;
+        }
+        button {
+            padding: 2px 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1><%= category.name %> - 記事一覧</h1>
+
+    <div class="operation-buttons">
+        <button onclick="location.href='/admin/articles/<%= category.id %>/add'">新規記事追加</button>
+        <button onclick="updateOrder()">表示順序を更新</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">ID</th>
+                <th class="thumbnail-cell">サムネイル</th>
+                <th class="title-cell">タイトル</th>
+                <th>要約</th>
+                <th style="width: 100px;">著者</th>
+                <th style="width: 80px;">閲覧数</th>
+                <th style="width: 80px;">
+                    順序
+                </th>
+                <th style="width: 80px;">状態</th>
+                <th style="width: 150px;">作成日</th>
+                <th style="width: 150px;">更新日</th>
+                <th style="width: 200px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (articles && articles.length > 0) { %>
+                <% articles.forEach(function(article) { %>
+                    <tr>
+                        <td><%= article.id %></td>
+                        <td class="thumbnail-cell">
+                            <% if (article.thumbnail) { %>
+                                <img src="<%= article.thumbnail %>" class="thumbnail" alt="サムネイル">
+                            <% } else { %>
+                                <span class="no-thumbnail">No Image</span>
+                            <% } %>
+                        </td>
+                        <td class="title-cell">
+                            <span class="title-text" title="<%= article.title %>"><%= article.title %></span>
+                        </td>
+                        <td class="summary"><%= article.summary %></td>
+                        <td><%= article.author %></td>
+                        <td><%= article.view_count %></td>
+                        <td>
+                            <input type="number" 
+                                   class="order-input" 
+                                   data-id="<%= article.id %>" 
+                                   value="<%= article.sort_order || 0 %>" 
+                                   style="width: 60px;">
+                        </td>
+                        <td class="<%= article.status ? 'status-published' : 'status-draft' %>">
+                            <%= article.status ? '公開' : '非公開' %>
+                        </td>
+                        <td><%= article.formatted_created_at %></td>
+                        <td><%= article.formatted_updated_at %></td>
+                        <td>
+                            <a href="/admin/articles/edit/<%= article.id %>">編集</a>
+                            <a href="javascript:void(0)" onclick="deleteArticle('<%= article.id %>')">削除</a>
+                        </td>
+                    </tr>
+                <% }); %>
+            <% } else { %>
+                <tr>
+                    <td colspan="11" style="text-align: center;">記事がありません</td>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
+
+    <script>
+        // 記事削除
+        function deleteArticle(id) {
+            if (confirm('この記事を削除してもよろしいですか？')) {
+                fetch(`/admin/articles/delete/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('記事を削除しました');
+                        location.reload();
+                    } else {
+                        alert(result.message || '削除に失敗しました');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('削除に失敗しました');
+                });
+            }
+        }
+
+        // 表示順序の更新
+        function updateOrder() {
+            const orders = {};
+            document.querySelectorAll('.order-input').forEach(input => {
+                orders[input.dataset.id] = input.value;
+            });
+
+            fetch('/admin/articles/updateOrder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orders)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('表示順序を更新しました');
+                    location.reload();
+                } else {
+                    alert(result.message || '更新に失敗しました');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('更新に失敗しました');
+            });
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カテゴリー編集</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: inline-block;
+            width: 120px;
+            margin-right: 10px;
+        }
+        .form-group input[type="text"],
+        .form-group select {
+            width: 300px;
+            padding: 5px;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        .buttons button {
+            padding: 5px 15px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>カテゴリー編集</h1>
+
+    <form id="editForm">
+        <div class="form-group">
+            <label>カテゴリー名：</label>
+            <input type="text" name="name" value="<%= category.name %>" required>
+        </div>
+        
+        <div class="form-group">
+            <label>親カテゴリー：</label>
+            <select name="parent_id">
+                <option value="0">なし</option>
+                <% parentCategories.forEach(function(parent) { %>
+                    <option value="<%= parent.id %>" 
+                            <%= category.parent_id == parent.id ? 'selected' : '' %>>
+                        <%= parent.name %>
+                    </option>
+                <% }); %>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>モデル：</label>
+            <select name="model_id" required>
+                <% models.forEach(function(model) { %>
+                    <option value="<%= model.id %>" 
+                            <%= category.model_id == model.id ? 'selected' : '' %>>
+                        <%= model.name %>
+                    </option>
+                <% }); %>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>表示順序：</label>
+            <input type="number" name="sort_order" value="<%= category.sort_order || 0 %>">
+        </div>
+
+        <div class="form-group">
+            <label>状態：</label>
+            <select name="status">
+                <option value="1" <%= category.status == 1 ? 'selected' : '' %>>表示</option>
+                <option value="0" <%= category.status == 0 ? 'selected' : '' %>>非表示</option>
+            </select>
+        </div>
+
+        <div class="buttons">
+            <button type="submit">保存</button>
+            <button type="button" onclick="history.back()">戻る</button>
+        </div>
+    </form>
+
+    <script>
+        document.getElementById('editForm').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+
+            fetch('/admin/category/edit/<%= category.id %>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if(result.success) {
+                    alert(result.message);
+                    window.location.href = '/admin/category/list';
+                } else {
+                    alert(result.message || '更新に失敗しました');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('更新に失敗しました');
+            });
+        };
+    </script>
+</body>
+</html> 

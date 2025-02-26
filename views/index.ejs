@@ -67,17 +67,27 @@
                     return '　'.repeat(level);
                 }
 
-                // 補助関数：再帰的にカテゴリーを表示
-                function renderCategories(categories, parentId = 0, level = 0) {
-                    categories.filter(cat => cat.parent_id == parentId).forEach(function(category) { 
-                %>
-                    <a href="/admin/content/<%= category.id %>/list" target="main" style="padding-left: <%= level * 20 %>px">
-                        <%= level > 0 ? '├--' : '' %>
-                        <%= category.name %>
-                    </a>
-                <%
-                        // 子カテゴリーを再帰的に表示
-                        renderCategories(categories, category.id, level + 1);
+                // 補助関数：再帰的にカテゴリー表示
+                function renderCategories(categories, level = 0) {
+                    categories.forEach(category => {
+                        if (category.parent_id === 0 || level > 0) { %>
+                            <div class="menu-item">
+                                <a href="/admin/content/<%= category.model_id %>/list?category=<%= category.id %>" 
+                                   target="main" 
+                                   style="padding-left: <%= level * 20 %>px;"
+                                   data-category-id="<%= category.id %>"
+                                   data-model-id="<%= category.model_id %>">
+                                    <%= level > 0 ? '├--' : '' %>
+                                    <%= category.name %>
+                                </a>
+                            </div>
+                            <%
+                            // 子カテゴリーを検索
+                            const children = categories.filter(child => child.parent_id === category.id);
+                            if (children.length > 0) {
+                                renderCategories(children, level + 1);
+                            }
+                        }
                     });
                 }
                 %>

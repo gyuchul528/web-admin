@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= category.name %> - ページ一覧</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .operation-buttons {
+            margin-bottom: 20px;
+        }
+        .operation-buttons button {
+            padding: 5px 15px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        .status-published {
+            color: green;
+        }
+        .status-draft {
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+    <h1><%= category.name %> - ページ一覧</h1>
+
+    <div class="operation-buttons">
+        <button onclick="location.href='/admin/pages/<%= category.id %>/add'">新規ページ追加</button>
+        <button onclick="updateOrder()">表示順序を更新</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">ID</th>
+                <th>タイトル</th>
+                <th style="width: 80px;">順序</th>
+                <th style="width: 80px;">状態</th>
+                <th style="width: 150px;">作成日</th>
+                <th style="width: 150px;">更新日</th>
+                <th style="width: 200px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (pages && pages.length > 0) { %>
+                <% pages.forEach(function(page) { %>
+                    <tr>
+                        <td><%= page.id %></td>
+                        <td><%= page.title %></td>
+                        <td>
+                            <input type="number" class="order-input" 
+                                   value="<%= page.sort_order %>" 
+                                   data-id="<%= page.id %>"
+                                   style="width: 60px;">
+                        </td>
+                        <td class="<%= page.status ? 'status-published' : 'status-draft' %>">
+                            <%= page.status ? '公開' : '非公開' %>
+                        </td>
+                        <td><%= page.formatted_created_at %></td>
+                        <td><%= page.formatted_updated_at %></td>
+                        <td>
+                            <a href="/admin/pages/edit/<%= page.id %>">編集</a>
+                            <a href="javascript:void(0)" onclick="deletePage('<%= page.id %>')">削除</a>
+                        </td>
+                    </tr>
+                <% }); %>
+            <% } else { %>
+                <tr>
+                    <td colspan="7" style="text-align: center;">ページがありません</td>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
+
+    <script>
+        // ページ削除
+        function deletePage(id) {
+            if (confirm('このページを削除してもよろしいですか？')) {
+                fetch(`/admin/pages/delete/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('ページを削除しました');
+                        location.reload();
+                    } else {
+                        alert(result.message || '削除に失敗しました');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('削除に失敗しました');
+                });
+            }
+        }
+
+        // 表示順序の更新
+        function updateOrder() {
+            const orders = {};
+            document.querySelectorAll('.order-input').forEach(input => {
+                orders[input.dataset.id] = input.value;
+            });
+
+            fetch('/admin/pages/updateOrder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orders)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('表示順序を更新しました');
+                    location.reload();
+                } else {
+                    alert(result.message || '更新に失敗しました');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('更新に失敗しました');
+            });
+        }
+    </script>
+</body>
+</html> 

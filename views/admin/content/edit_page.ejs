@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ページ編集</title>
+    <!-- CKEditor CDN -->
+    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 1200px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        textarea {
+            height: 300px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .category-info {
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        .cancel-button {
+            background-color: #888;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="category-info">
+        <h2><%= category.name %></h2>
+        <p>モデルタイプ: <%= category.model_name %></p>
+    </div>
+
+    <h1>ページ編集</h1>
+    <form id="pageForm">
+        <div class="form-group">
+            <label for="title">タイトル：</label>
+            <input type="text" id="title" name="title" value="<%= page.title %>" required>
+        </div>
+
+        <div class="form-group">
+            <label for="content">内容：</label>
+            <textarea id="content" name="content" required><%= page.content %></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="sort_order">表示順序：</label>
+            <input type="number" id="sort_order" name="sort_order" value="<%= page.sort_order %>">
+        </div>
+
+        <div class="form-group">
+            <label for="status">状態：</label>
+            <select id="status" name="status">
+                <option value="1" <%= page.status === 1 ? 'selected' : '' %>>表示</option>
+                <option value="0" <%= page.status === 0 ? 'selected' : '' %>>非表示</option>
+            </select>
+        </div>
+
+        <div class="buttons">
+            <button type="submit">保存</button>
+            <button type="button" class="cancel-button" onclick="goBack()">キャンセル</button>
+        </div>
+    </form>
+
+    <script>
+        // CKEditorの初期化
+        CKEDITOR.replace('content', {
+            height: 400,
+            removePlugins: 'elementspath,resize',
+            toolbarGroups: [
+                { name: 'document', groups: [ 'mode', 'document', 'doctools' ] },
+                { name: 'clipboard', groups: [ 'clipboard', 'undo' ] },
+                { name: 'editing', groups: [ 'find', 'selection', 'spellchecker', 'editing' ] },
+                { name: 'forms', groups: [ 'forms' ] },
+                '/',
+                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ] },
+                { name: 'paragraph', groups: [ 'list', 'indent', 'blocks', 'align', 'bidi', 'paragraph' ] },
+                { name: 'links', groups: [ 'links' ] },
+                { name: 'insert', groups: [ 'insert' ] },
+                '/',
+                { name: 'styles', groups: [ 'styles' ] },
+                { name: 'colors', groups: [ 'colors' ] },
+                { name: 'tools', groups: [ 'tools' ] },
+                { name: 'others', groups: [ 'others' ] }
+            ]
+        });
+
+        document.getElementById('pageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                title: document.getElementById('title').value,
+                content: CKEDITOR.instances.content.getData(),
+                sort_order: document.getElementById('sort_order').value,
+                status: document.getElementById('status').value
+            };
+
+            try {
+                const response = await fetch('/admin/content/<%= category.id %>/edit_page/<%= page.id %>', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('保存しました');
+                    window.location.href = '/admin/content/<%= category.id %>/list';
+                } else {
+                    alert(result.message || '保存に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('保存に失敗しました');
+            }
+        });
+
+        function goBack() {
+            window.location.href = '/admin/content/<%= category.id %>/list';
+        }
+    </script>
+</body>
+</html> 

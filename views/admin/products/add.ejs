@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= category.name %> - 新規製品追加</title>
+    <!-- CKEditor CDN -->
+    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: inline-block;
+            width: 100px;
+            margin-right: 10px;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group textarea {
+            width: 500px;
+            padding: 5px;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        .buttons button {
+            padding: 5px 15px;
+            margin-right: 10px;
+        }
+        #thumbnailPreview {
+            margin-top: 10px;
+            max-width: 200px;
+        }
+        #thumbnailPreview img {
+            max-width: 100%;
+            height: auto;
+        }
+        select {
+            padding: 5px;
+            min-width: 200px;
+        }
+        select:disabled {
+            background-color: #f5f5f5;
+        }
+        .thumbnail-upload {
+            margin-top: 5px;
+        }
+        .select-image-btn {
+            padding: 5px 15px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .select-image-btn:hover {
+            background-color: #e0e0e0;
+        }
+        .thumbnail-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .filename {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .cancel-btn {
+            padding: 2px 8px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .cancel-btn:hover {
+            background-color: #cc0000;
+        }
+        #preview {
+            border: 1px solid #ddd;
+            padding: 3px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1><%= category.name %> - 新規製品追加</h1>
+
+    <form id="productForm">
+        <div class="form-group">
+            <label>製品名：</label>
+            <input type="text" name="name" required>
+        </div>
+        <div class="form-group">
+            <label>分類：</label>
+            <select name="product_category_id" onchange="updateSubcategories(this.value)">
+                <option value="">選択してください</option>
+                <% productCategories.forEach(function(category) { %>
+                    <option value="<%= category.id %>"><%= category.name %></option>
+                <% }); %>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>小分類：</label>
+            <select name="subcategory_id" id="subcategory_select" disabled>
+                <option value="">分類を選択してください</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>サムネイル：</label>
+            <div class="thumbnail-upload">
+                <input type="file" 
+                       name="thumbnail" 
+                       id="thumbnail" 
+                       accept="image/*" 
+                       onchange="previewImage(this)" 
+                       style="display: none;">
+                <button type="button" 
+                        class="select-image-btn" 
+                        onclick="document.getElementById('thumbnail').click()">
+                    画像を選択
+                </button>
+                <div id="thumbnailPreview" style="display: none;">
+                    <img id="preview" style="max-width: 200px; max-height: 200px; margin: 10px 0;">
+                    <div class="thumbnail-actions">
+                        <span class="filename" id="filename"></span>
+                        <button type="button" 
+                                class="cancel-btn" 
+                                onclick="cancelThumbnail()">
+                            ✕ 取り消し
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>価格：</label>
+            <input type="number" name="price" min="0" step="1">
+        </div>
+        <div class="form-group">
+            <label>概要：</label>
+            <textarea name="summary" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <label>詳細説明：</label>
+            <textarea name="description" id="editor"></textarea>
+        </div>
+        <div class="form-group">
+            <label>状態：</label>
+            <select name="status">
+                <option value="1">公開</option>
+                <option value="0">非公開</option>
+            </select>
+        </div>
+        <div class="buttons">
+            <button type="submit">保存</button>
+            <button type="button" onclick="history.back()">戻る</button>
+        </div>
+    </form>
+
+    <script>
+        // CKEditorの初期化
+        CKEDITOR.replace('editor', {
+            language: 'ja',
+            height: 400
+        });
+
+        // 画像プレビュー機能
+        function previewImage(input) {
+            const preview = document.getElementById('preview');
+            const previewContainer = document.getElementById('thumbnailPreview');
+            const filenameElement = document.getElementById('filename');
+            
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                    filenameElement.textContent = file.name;
+                }
+                
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // サムネイル取り消し機能
+        function cancelThumbnail() {
+            const input = document.getElementById('thumbnail');
+            const preview = document.getElementById('preview');
+            const previewContainer = document.getElementById('thumbnailPreview');
+            const filenameElement = document.getElementById('filename');
+            
+            // 入力値をリセット
+            input.value = '';
+            preview.src = '';
+            previewContainer.style.display = 'none';
+            filenameElement.textContent = '';
+        }
+
+        // 小分類データをJavaScriptオブジェクトとして保持
+        const subcategories = <%- JSON.stringify(subcategories) %>;
+        
+        // 分類選択時に小分類を更新
+        function updateSubcategories(categoryId) {
+            const subcategorySelect = document.getElementById('subcategory_select');
+            subcategorySelect.innerHTML = '<option value="">選択してください</option>';
+            
+            if (!categoryId) {
+                subcategorySelect.disabled = true;
+                return;
+            }
+
+            // 選択された分類に属する小分類を抽出
+            const filteredSubcategories = subcategories.filter(sub => sub.category_id == categoryId);
+            
+            // 小分類選択肢を追加
+            filteredSubcategories.forEach(sub => {
+                const option = document.createElement('option');
+                option.value = sub.id;
+                option.textContent = sub.name;
+                subcategorySelect.appendChild(option);
+            });
+            
+            subcategorySelect.disabled = filteredSubcategories.length === 0;
+        }
+
+        // フォーム送信処理を修正
+        document.getElementById('productForm').onsubmit = async function(e) {
+            e.preventDefault();
+            
+            // 必須項目のチェック
+            if (!this.name.value.trim()) {
+                alert('製品名を入力してください');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('name', this.name.value.trim());
+            formData.append('product_category_id', this.product_category_id.value);
+            formData.append('subcategory_id', this.subcategory_id.value);
+            formData.append('summary', this.summary.value.trim());
+            formData.append('description', CKEDITOR.instances.editor.getData().trim());
+            formData.append('price', this.price.value || '');
+            formData.append('status', this.status.value);
+            
+            // サムネイル画像の追加
+            const thumbnailFile = document.getElementById('thumbnail').files[0];
+            if (thumbnailFile) {
+                formData.append('thumbnail', thumbnailFile);
+            }
+
+            try {
+                const response = await fetch('/admin/products/<%= category.id %>/add', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || '保存に失敗しました');
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('製品を保存しました');
+                    window.location.href = '/admin/products/<%= category.id %>/list';
+                } else {
+                    alert(result.message || '保存に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert(error.message || '保存に失敗しました');
+            }
+        };
+    </script>
+</body>
+</html> 

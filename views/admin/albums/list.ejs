@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アルバム管理</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3">アルバム管理</h1>
+            <button class="btn btn-primary" onclick="location.href='/admin/albums/create'">
+                新規アルバム作成
+            </button>
+        </div>
+
+        <div class="row g-4">
+            <% albums.forEach(function(album) { %>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title"><%= album.name %></h5>
+                            <p class="card-text text-muted small">
+                                <%= album.description || '説明なし' %>
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-secondary"><%= album.photoCount %>枚の写真</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="location.href='/admin/albums/<%= album.id %>/photos'">
+                                        写真管理
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" 
+                                            onclick="location.href='/admin/albums/<%= album.id %>/edit'">
+                                        編集
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="deleteAlbum(<%= album.id %>)">
+                                        削除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-muted small">
+                            作成日: <%= new Date(album.created_at).toLocaleDateString() %>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        async function deleteAlbum(albumId) {
+            if (!confirm('このアルバムを削除してもよろしいですか？\n含まれる写真もすべて削除されます。')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/albums/${albumId}/delete`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('アルバムを削除しました');
+                    location.reload();
+                } else {
+                    alert(result.message || '削除に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('削除に失敗しました');
+            }
+        }
+    </script>
+</body>
+</html> 

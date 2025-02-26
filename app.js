@@ -6,12 +6,17 @@ var svgCaptcha = require('svg-captcha');
 
 const app = express();
 
+// 環境変数の設定（app.jsの先頭付近に追加）
+process.env.NODE_ENV = 'development';
+
 // 添加调试日志
 console.log('Starting application...');
 
 // 添加请求日志中间件
 app.use((req, res, next) => {
     console.log('Request URL:', req.url);
+    console.log('Request params:', req.params);
+    console.log('Request query:', req.query);
     next();
 });
 
@@ -27,6 +32,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/img', express.static(path.join(__dirname, 'public/img')));
 app.use('/css', express.static(path.join(__dirname, 'public/css')));
 app.use('/js', express.static(path.join(__dirname, 'public/js')));
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // Session配置
 app.use(session({
@@ -69,16 +75,29 @@ app.get('/login', (req, res) => {
 // 首页路由
 app.get('/', async (req, res) => {
     try {
-        const categories = await db.query(`
-            SELECT c.*, m.name as model_name 
-            FROM categories c 
-            LEFT JOIN models m ON c.model_id = m.id 
+        // 查询所有栏目
+        const sql = `
+            SELECT 
+                c.id,
+                c.name,
+                c.parent_id,
+                c.model_id,
+                c.sort_order,
+                c.status
+            FROM categories c
             ORDER BY c.sort_order ASC, c.id ASC
-        `);
-        res.render('index', { categories });
-    } catch (error) {
-        console.error('Error fetching categories:', error);
-        res.status(500).send('Internal Server Error');
+        `;
+        
+        const categories = await db.query(sql);
+        
+        // デバッグ用のログ出力
+        console.log('Categories:', categories);
+        
+        // 渲染页面，传递 categories 数据
+        res.render('index', { categories: categories || [] });
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).send('Database error');
     }
 });
 
@@ -165,14 +184,17 @@ app.use((req, res, next) => {
 
 // 错误处理
 app.use((err, req, res, next) => {
-    console.error('Error:', err.stack);
-    res.status(500).send('Something broke!');
+    console.error('Error details:', err);
+    res.status(500).render('error', {
+        message: 'サーバーエラーが発生しました',
+        error: process.env.NODE_ENV === 'development' ? err : {}
+    });
 });
 
-// 使用端口 3005
-const PORT = process.env.PORT || 3005;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// 使用端口 3006
+const port = process.env.PORT || 3006;
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
     console.log(`Views directory: ${path.join(__dirname, 'views')}`);  // 打印视图目录
 });
 

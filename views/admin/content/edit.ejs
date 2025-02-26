@@ -1,106 +1,116 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>編集 - <%= content.title %></title>
-    <link rel="stylesheet" href="/css/style.css">
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <title><%= content.title %> - 編集</title>
+    <!-- CKEditor CDN -->
+    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: inline-block;
+            width: 100px;
+            margin-right: 10px;
+        }
+        .form-group input[type="text"] {
+            width: 500px;
+            padding: 5px;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        .buttons button {
+            padding: 5px 15px;
+            margin-right: 10px;
+        }
+    </style>
 </head>
 <body>
-    <div class="content-container">
-        <div class="content-header">
-            <div class="header-title">
-                <h2>編集 - <%= content.title %></h2>
-            </div>
-            <a href="/admin/content/<%= category.slug %>" class="btn-back">
-                <i class="fas fa-arrow-left"></i> 戻る
-            </a>
+    <h1><%= content.category_name %> - コンテンツ編集</h1>
+
+    <form id="editForm">
+        <div class="form-group">
+            <label>タイトル：</label>
+            <input type="text" name="title" value="<%= content.title %>" required>
         </div>
-
-        <div class="form-container">
-            <form id="editForm" action="/admin/content/<%= category.slug %>/<%= content.id %>" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="_method" value="PUT">
-                
-                <div class="form-group">
-                    <label for="title">タイトル <span class="required">*</span></label>
-                    <input type="text" id="title" name="title" class="form-control" required value="<%= content.title %>">
-                </div>
-
-                <div class="form-group">
-                    <label for="content">内容 <span class="required">*</span></label>
-                    <div id="editor" style="height: 300px;"></div>
-                    <input type="hidden" name="content" id="content">
-                </div>
-
-                <div class="form-group">
-                    <label for="thumbnail">サムネイル</label>
-                    <div class="file-upload">
-                        <input type="file" id="thumbnail" name="thumbnail" accept="image/*" class="form-control">
-                        <div id="preview" class="image-preview">
-                            <% if (content.thumbnail) { %>
-                                <div class="current-thumbnail">
-                                    <img src="<%= content.thumbnail %>" alt="Current thumbnail">
-                                    <label class="thumbnail-label">現在のサムネイル</label>
-                                </div>
-                            <% } %>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="status">状態</label>
-                    <select id="status" name="status" class="form-control">
-                        <option value="1" <%= content.status === 1 ? 'selected' : '' %>>公開</option>
-                        <option value="0" <%= content.status === 0 ? 'selected' : '' %>>非公開</option>
-                    </select>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn-submit">更新</button>
-                    <a href="/admin/content/<%= category.slug %>" class="btn-cancel">キャンセル</a>
-                </div>
-            </form>
+        <div class="form-group">
+            <label>内容：</label>
+            <textarea name="content" id="editor" required><%= content.content %></textarea>
         </div>
-    </div>
+        <div class="form-group">
+            <label>状態：</label>
+            <select name="status">
+                <option value="1" <%= content.status == 1 ? 'selected' : '' %>>公開</option>
+                <option value="0" <%= content.status == 0 ? 'selected' : '' %>>非公開</option>
+            </select>
+        </div>
+        <div class="buttons">
+            <button type="submit">保存</button>
+            <button type="button" onclick="history.back()">戻る</button>
+        </div>
+    </form>
 
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <script>
-        // 初始化富文本编辑器
-        var quill = new Quill('#editor', {
-            theme: 'snow',
-            modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    ['link', 'image'],
-                    ['clean']
-                ]
-            }
+        // CKEditorの初期化
+        CKEDITOR.replace('editor', {
+            language: 'ja',
+            height: 400,
+            removeButtons: 'Save,NewPage,Preview,Print,Templates,Cut,Copy,Paste,PasteText,PasteFromWord,Find,Replace,SelectAll,Scayt,Form,Checkbox,Radio,TextField,Textarea,Select,Button,ImageButton,HiddenField,Strike,Subscript,Superscript,RemoveFormat,NumberedList,BulletedList,Outdent,Indent,Blockquote,CreateDiv,JustifyLeft,JustifyCenter,JustifyRight,JustifyBlock,BidiLtr,BidiRtl,Language,Unlink,Anchor,Flash,HorizontalRule,Smiley,SpecialChar,PageBreak,Iframe,Styles,Format,Font,FontSize,TextColor,BGColor,Maximize,ShowBlocks,About',
+            toolbarGroups: [
+                { name: 'document', groups: [ 'mode', 'document', 'doctools' ] },
+                { name: 'clipboard', groups: [ 'clipboard', 'undo' ] },
+                { name: 'editing', groups: [ 'find', 'selection', 'spellchecker', 'editing' ] },
+                { name: 'forms', groups: [ 'forms' ] },
+                '/',
+                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ] },
+                { name: 'paragraph', groups: [ 'list', 'indent', 'blocks', 'align', 'bidi', 'paragraph' ] },
+                { name: 'links', groups: [ 'links' ] },
+                { name: 'insert', groups: [ 'insert' ] },
+                '/',
+                { name: 'styles', groups: [ 'styles' ] },
+                { name: 'colors', groups: [ 'colors' ] },
+                { name: 'tools', groups: [ 'tools' ] },
+                { name: 'others', groups: [ 'others' ] },
+                { name: 'about', groups: [ 'about' ] }
+            ]
         });
 
-        // 设置初始内容
-        quill.root.innerHTML = `<%- content.content.replace(/`/g, '\\`') %>`;
+        document.getElementById('editForm').onsubmit = function(e) {
+            e.preventDefault();
+            
+            const data = {
+                title: this.title.value,
+                content: CKEDITOR.instances.editor.getData(),
+                status: this.status.value
+            };
 
-        // 图片预览
-        document.getElementById('thumbnail').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('preview').innerHTML = 
-                        `<img src="${e.target.result}" style="max-width: 200px;">`;
+            fetch('/admin/content/edit/<%= content.id %>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if(result.success) {
+                    alert(result.message);
+                    window.location.href = '/admin/content/<%= content.category_id %>/list';
+                } else {
+                    alert(result.message || '更新に失敗しました');
                 }
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // 表单提交
-        document.getElementById('editForm').onsubmit = function() {
-            document.getElementById('content').value = quill.root.innerHTML;
-            return true;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('更新に失敗しました');
+            });
         };
     </script>
 </body>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= category.name %> - 新規記事追加</title>
+    <!-- CKEditor CDN -->
+    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: inline-block;
+            width: 100px;
+            margin-right: 10px;
+        }
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 500px;
+            padding: 5px;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        .buttons button {
+            padding: 5px 15px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1><%= category.name %> - 新規記事追加</h1>
+
+    <form id="articleForm">
+        <div class="form-group">
+            <label>タイトル：</label>
+            <input type="text" name="title" required>
+        </div>
+        <div class="form-group">
+            <label>サムネイル：</label>
+            <input type="file" name="thumbnail" accept="image/*" onchange="previewImage(this)">
+            <div id="thumbnailPreview" style="margin-top: 10px; max-width: 200px;">
+                <img id="preview" style="display: none; max-width: 100%; height: auto;">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>要約：</label>
+            <textarea name="summary" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <label>著者：</label>
+            <input type="text" name="author">
+        </div>
+        <div class="form-group">
+            <label>内容：</label>
+            <textarea name="content" id="editor" required></textarea>
+        </div>
+        <div class="form-group">
+            <label>状態：</label>
+            <select name="status">
+                <option value="1">公開</option>
+                <option value="0">非公開</option>
+            </select>
+        </div>
+        <div class="buttons">
+            <button type="submit">保存</button>
+            <button type="button" onclick="history.back()">戻る</button>
+        </div>
+    </form>
+
+    <script>
+        // CKEditorの初期化
+        CKEDITOR.replace('editor', {
+            language: 'ja',
+            height: 400,
+            removeButtons: 'Save,NewPage,Preview,Print,Templates,Cut,Copy,Paste,PasteText,PasteFromWord,Find,Replace,SelectAll,Scayt,Form,Checkbox,Radio,TextField,Textarea,Select,Button,ImageButton,HiddenField,Strike,Subscript,Superscript,RemoveFormat,NumberedList,BulletedList,Outdent,Indent,Blockquote,CreateDiv,JustifyLeft,JustifyCenter,JustifyRight,JustifyBlock,BidiLtr,BidiRtl,Language,Unlink,Anchor,Flash,HorizontalRule,Smiley,SpecialChar,PageBreak,Iframe,Styles,Format,Font,FontSize,TextColor,BGColor,Maximize,ShowBlocks,About',
+            toolbarGroups: [
+                { name: 'document', groups: [ 'mode', 'document', 'doctools' ] },
+                { name: 'clipboard', groups: [ 'clipboard', 'undo' ] },
+                { name: 'editing', groups: [ 'find', 'selection', 'spellchecker', 'editing' ] },
+                { name: 'forms', groups: [ 'forms' ] },
+                '/',
+                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ] },
+                { name: 'paragraph', groups: [ 'list', 'indent', 'blocks', 'align', 'bidi', 'paragraph' ] },
+                { name: 'links', groups: [ 'links' ] },
+                { name: 'insert', groups: [ 'insert' ] },
+                '/',
+                { name: 'styles', groups: [ 'styles' ] },
+                { name: 'colors', groups: [ 'colors' ] },
+                { name: 'tools', groups: [ 'tools' ] },
+                { name: 'others', groups: [ 'others' ] },
+                { name: 'about', groups: [ 'about' ] }
+            ]
+        });
+
+        // 画像プレビュー機能
+        function previewImage(input) {
+            const preview = document.getElementById('preview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // フォーム送信処理
+        document.getElementById('articleForm').onsubmit = async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('title', this.title.value);
+            formData.append('summary', this.summary.value);
+            formData.append('author', this.author.value);
+            formData.append('content', CKEDITOR.instances.editor.getData());
+            formData.append('status', this.status.value);
+            
+            // サムネイル画像の追加
+            const thumbnailFile = this.thumbnail.files[0];
+            if (thumbnailFile) {
+                formData.append('thumbnail', thumbnailFile);
+            }
+
+            try {
+                const response = await fetch('/admin/articles/<%= category.id %>/add', {
+                    method: 'POST',
+                    body: formData // FormDataを使用してマルチパートフォームデータを送信
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert('記事を保存しました');
+                    window.location.href = '/admin/articles/<%= category.id %>/list';
+                } else {
+                    alert(result.message || '保存に失敗しました');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('保存に失敗しました');
+            }
+        };
+    </script>
+</body>
+</html> 
