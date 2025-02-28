@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= category.name %> - 新規ページ追加</title>
+    <!-- CKEditor CDN -->
+    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: inline-block;
+            width: 100px;
+            margin-right: 10px;
+        }
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 500px;
+            padding: 5px;
+        }
+        .form-group input[type="number"] {
+            width: 100px;
+            padding: 5px;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        .buttons button {
+            padding: 5px 15px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1><%= category.name %> - 新規ページ追加</h1>
+
+    <form id="pageForm">
+        <div class="form-group">
+            <label>タイトル：</label>
+            <input type="text" name="title" required>
+        </div>
+        <div class="form-group">
+            <label>内容：</label>
+            <textarea name="content" id="content" rows="10"></textarea>
+        </div>
+        <div class="form-group">
+            <label>表示順：</label>
+            <input type="number" name="sort_order" value="0" min="0">
+        </div>
+        <div class="form-group">
+            <label>状態：</label>
+            <select name="status">
+                <option value="1">表示</option>
+                <option value="0">非表示</option>
+            </select>
+        </div>
+        <div class="buttons">
+            <button type="submit">保存</button>
+            <button type="button" onclick="history.back()">キャンセル</button>
+        </div>
+    </form>
+
+    <script>
+        // CKEditorの初期化
+        CKEDITOR.replace('content', {
+            height: 400,
+            filebrowserUploadUrl: '/admin/upload-image'
+        });
+
+        // フォーム送信処理
+        document.getElementById('pageForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // CKEditorの内容を取得
+            const content = CKEDITOR.instances.content.getData();
+            
+            // フォームデータの作成
+            const formData = new FormData(this);
+            formData.set('content', content);
+            
+            // フォームデータをオブジェクトに変換
+            const formDataObj = {};
+            formData.forEach((value, key) => {
+                formDataObj[key] = value;
+            });
+            
+            console.log('Sending data:', formDataObj); // デバッグ用ログ
+            
+            // APIリクエスト
+            fetch('/admin/pages/<%= category.id %>/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formDataObj)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message || 'ページが正常に追加されました');
+                    window.location.href = '/admin/pages/<%= category.id %>/list';
+                } else {
+                    alert(data.message || 'エラーが発生しました');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('エラーが発生しました');
+            });
+        });
+    </script>
+</body>
+</html> 

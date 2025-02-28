@@ -21,8 +21,14 @@ app.use((req, res, next) => {
 });
 
 // 视图引擎设置
-app.set('views', path.join(__dirname, 'views'));
+// 设置模板引擎为 EJS
 app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+// 添加视图缓存配置（生产环境开启，开发环境关闭）
+app.set('view cache', process.env.NODE_ENV === 'production');
+
+// 移除 Jade 相关配置
 
 // 中间件
 app.use(logger('dev'));
@@ -47,7 +53,11 @@ const db = require('./db');
 
 // 路由配置
 const adminRouter = require('./routes/admin');
+const picturesRouter = require('./routes/admin/pictures');
+
+// indexRouterは使用しないので、直接ルートパスのルーティングを設定
 app.use('/admin', adminRouter);
+app.use('/admin/pictures', picturesRouter);
 
 // 添加内容管理路由（添加调试日志）
 console.log('Loading content routes...');
@@ -68,89 +78,15 @@ app.get('/login', (req, res) => {
     if (req.session && req.session.user) {
         res.redirect('/admin');
     } else {
-        res.render('login');
+        res.render('users/login');  // 更新视图路径
     }
 });
 
-// 首页路由
-app.get('/', async (req, res) => {
-    try {
-        // 查询所有栏目
-        const sql = `
-            SELECT 
-                c.id,
-                c.name,
-                c.parent_id,
-                c.model_id,
-                c.sort_order,
-                c.status
-            FROM categories c
-            ORDER BY c.sort_order ASC, c.id ASC
-        `;
-        
-        const categories = await db.query(sql);
-        
-        // デバッグ用のログ出力
-        console.log('Categories:', categories);
-        
-        // 渲染页面，传递 categories 数据
-        res.render('index', { categories: categories || [] });
-    } catch (err) {
-        console.error('Database error:', err);
-        res.status(500).send('Database error');
-    }
-});
-
-// 生成验证码
-app.get('/captcha', function(req, res) {
-  var captcha = svgCaptcha.create({
-    size: 4,      // 验证码长度
-    width: 150,   // 宽度
-    height: 50,   // 高度
-    fontSize: 50, // 字体大小
-    noise: 2,     // 干扰线条数
-    color: true,  // 使用彩色字符
-    background: '#fff',  // 背景色
-    charPreset: '0123456789' // 仅使用数字
-  });
-  
-  // 将验证码存入session
-  req.session.captcha = captcha.text;
-  
-  // 设置响应头，防止缓存
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.type('svg');
-  res.status(200).send(captcha.data);
-});
-
-// 登录处理
-app.post('/login', function(req, res) {
-  const { username, password, verify } = req.body;
-  
-  // 验证码检查
-  if (!verify || verify.toLowerCase() !== req.session.captcha.toLowerCase()) {
-    return res.json({ success: false, message: '認証コードが正しくありません' });
-  }
-
-  // 这里是示例账号，实际应用中应该从数据库验证
-  if (username === 'admin' && password === 'password123') {
-    req.session.user = {
-      username: username,
-      isAdmin: true
-    };
-    res.json({ success: true, redirect: '/admin' });
-  } else {
-    res.json({ success: false, message: 'ユーザー名またはパスワードが正しくありません' });
-  }
-});
-
-// 管理页面路由
+// 修改管理页面路由
 app.get('/admin', checkAuth, async (req, res) => {
     try {
         const categories = await db.query('SELECT * FROM categories ORDER BY sort_order');
-        res.render('index', { 
+        res.render('admin/dashboard', {  // 更新视图路径
             categories: categories,
             user: req.session.user
         });

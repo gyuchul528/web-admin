@@ -1,0 +1,147 @@
+<%- include('../../partials/admin/header') %>
+
+<div class="container-fluid">
+    <div class="row">
+        <main class="col-md-12 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">アルバム編集</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="/admin/pictures/<%= category.id %>/list" class="btn btn-sm btn-outline-secondary">アルバム一覧に戻る</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <form id="albumForm" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">アルバム名 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" value="<%= album.name %>" required>
+                            <div class="invalid-feedback">
+                                アルバム名を入力してください。
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">説明</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"><%= album.description || '' %></textarea>
+                        </div>
+                        
+                        <% if (subcategories && subcategories.length > 0) { %>
+                        <div class="mb-3">
+                            <label for="subcategory_id" class="form-label">サブカテゴリー</label>
+                            <select class="form-select" id="subcategory_id" name="subcategory_id">
+                                <option value="">選択してください</option>
+                                <% subcategories.forEach(function(subcategory) { %>
+                                    <option value="<%= subcategory.id %>" <%= album.subcategory_id == subcategory.id ? 'selected' : '' %>><%= subcategory.name %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <% } %>
+                        
+                        <div class="mb-3">
+                            <label for="privacy_level" class="form-label">公開設定</label>
+                            <select class="form-select" id="privacy_level" name="privacy_level">
+                                <option value="0" <%= album.privacy_level == 0 ? 'selected' : '' %>>公開</option>
+                                <option value="1" <%= album.privacy_level == 1 ? 'selected' : '' %>>限定公開</option>
+                                <option value="2" <%= album.privacy_level == 2 ? 'selected' : '' %>>非公開</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="sort_order" class="form-label">表示順</label>
+                            <input type="number" class="form-control" id="sort_order" name="sort_order" value="<%= album.sort_order || 0 %>" min="0">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">サムネイル</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <% if (album.thumbnail_url) { %>
+                                        <img src="<%= album.thumbnail_url %>" alt="<%= album.name %>" class="img-thumbnail mb-2" style="max-height: 200px;">
+                                    <% } else { %>
+                                        <div class="bg-light text-center p-5 mb-2">サムネイル画像なし</div>
+                                    <% } %>
+                                    <p class="small text-muted">サムネイルを変更するには、アルバム内の写真を選択してください。</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">保存</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            ヘルプ
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">アルバム編集について</h5>
+                            <p class="card-text">アルバムの情報を編集できます。</p>
+                            <ul>
+                                <li><strong>アルバム名：</strong> 必須項目です。わかりやすい名前を付けてください。</li>
+                                <li><strong>説明：</strong> アルバムの内容や目的を説明する文章を入力できます。</li>
+                                <li><strong>公開設定：</strong> アルバムの公開レベルを設定します。</li>
+                                <li><strong>表示順：</strong> 数字が小さいほど先頭に表示されます。</li>
+                                <li><strong>サムネイル：</strong> アルバム内の写真から選択できます。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('albumForm');
+        
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            // フォームのバリデーション
+            if (!form.checkValidity()) {
+                event.stopPropagation();
+                form.classList.add('was-validated');
+                return;
+            }
+            
+            // フォームデータの収集
+            const formData = new FormData(form);
+            const albumData = {};
+            
+            for (const [key, value] of formData.entries()) {
+                albumData[key] = value;
+            }
+            
+            // サーバーにデータを送信
+            fetch('/admin/pictures/<%= category.id %>/album/edit/<%= album.id %>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(albumData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 成功したらアルバム一覧ページにリダイレクト
+                    window.location.href = `/admin/pictures/<%= category.id %>/list?message=アルバムを更新しました&messageType=success`;
+                } else {
+                    alert('アルバムの更新に失敗しました: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('アルバム更新中にエラーが発生しました');
+            });
+        });
+    });
+</script>
+
+<%- include('../../partials/admin/footer') %> 

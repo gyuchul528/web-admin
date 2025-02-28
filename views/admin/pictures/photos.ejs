@@ -1,0 +1,426 @@
+<%- include('../../partials/admin/header') %>
+
+<div class="container-fluid">
+    <div class="row">
+        <main class="col-md-12 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">アルバム: <%= album.name %></h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                            写真をアップロード
+                        </button>
+                        <a href="/admin/pictures/<%= category.id %>/list" class="btn btn-sm btn-outline-secondary">アルバム一覧に戻る</a>
+                    </div>
+                </div>
+            </div>
+
+            <% if (typeof message !== 'undefined' && message) { %>
+                <div class="alert alert-<%= messageType || 'info' %> alert-dismissible fade show" role="alert">
+                    <%= message %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <% } %>
+
+            <div class="mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h5 class="card-title">アルバム情報</h5>
+                                <p class="card-text"><%= album.description || '説明なし' %></p>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        作成日: <%= album.formatted_created_at %> | 
+                                        更新日: <%= album.formatted_updated_at %> | 
+                                        写真数: <%= photos ? photos.length : 0 %>枚
+                                    </small>
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <a href="/admin/pictures/<%= category.id %>/album/edit/<%= album.id %>" class="btn btn-outline-secondary">アルバム情報を編集</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <% if (photos && photos.length > 0) { %>
+                <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4 mb-4" id="photoGallery">
+                    <% photos.forEach(function(photo) { %>
+                        <div class="col">
+                            <div class="card h-100 photo-card" data-id="<%= photo.id %>">
+                                <img src="/uploads/photos/<%= photo.filename %>" class="card-img-top" alt="<%= photo.title || 'Photo' %>">
+                                <div class="card-body">
+                                    <h5 class="card-title text-truncate"><%= photo.title || 'タイトルなし' %></h5>
+                                    <p class="card-text small">
+                                        <% if (photo.width && photo.height) { %>
+                                            <%= photo.width %>x<%= photo.height %> | 
+                                        <% } %>
+                                        <%= Math.round(photo.file_size / 1024) %> KB
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary edit-photo" data-id="<%= photo.id %>">編集</button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger delete-photo" data-id="<%= photo.id %>" data-title="<%= photo.title || 'タイトルなし' %>">削除</button>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input set-thumbnail" type="radio" name="thumbnailPhoto" id="thumbnail<%= photo.id %>" value="<%= photo.id %>" <%= album.thumbnail_photo_id == photo.id ? 'checked' : '' %>>
+                                            <label class="form-check-label" for="thumbnail<%= photo.id %>">
+                                                サムネイル
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+
+                <div class="d-flex justify-content-center">
+                    <button type="button" class="btn btn-outline-primary" id="sortPhotosBtn">写真の並び順を保存</button>
+                </div>
+            <% } else { %>
+                <div class="alert alert-info">
+                    このアルバムにはまだ写真がありません。「写真をアップロード」ボタンをクリックして写真を追加してください。
+                </div>
+            <% } %>
+        </main>
+    </div>
+</div>
+
+<!-- 写真アップロードモーダル -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadModalLabel">写真のアップロード</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="photos" class="form-label">写真を選択（複数可）</label>
+                        <input class="form-control" type="file" id="photos" name="photos" multiple accept="image/*" required>
+                        <div class="form-text">JPG、PNG、GIF形式の画像をアップロードできます。最大ファイルサイズ: 5MB</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="privacy_level" class="form-label">公開設定</label>
+                        <select class="form-select" id="privacy_level" name="privacy_level">
+                            <option value="0">公開</option>
+                            <option value="1" selected>限定公開</option>
+                            <option value="2">非公開</option>
+                        </select>
+                    </div>
+                    <div class="progress d-none" id="uploadProgress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="uploadButton">アップロード</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 写真編集モーダル -->
+<div class="modal fade" id="editPhotoModal" tabindex="-1" aria-labelledby="editPhotoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPhotoModalLabel">写真情報の編集</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPhotoForm">
+                    <input type="hidden" id="editPhotoId" name="id">
+                    <div class="mb-3">
+                        <label for="editPhotoTitle" class="form-label">タイトル</label>
+                        <input type="text" class="form-control" id="editPhotoTitle" name="title">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPhotoDescription" class="form-label">説明</label>
+                        <textarea class="form-control" id="editPhotoDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPhotoPrivacyLevel" class="form-label">公開設定</label>
+                        <select class="form-select" id="editPhotoPrivacyLevel" name="privacy_level">
+                            <option value="0">公開</option>
+                            <option value="1">限定公開</option>
+                            <option value="2">非公開</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-primary" id="savePhotoButton">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 写真削除確認モーダル -->
+<div class="modal fade" id="deletePhotoModal" tabindex="-1" aria-labelledby="deletePhotoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletePhotoModalLabel">写真削除の確認</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>写真「<span id="photoTitle"></span>」を削除してもよろしいですか？</p>
+                <p class="text-danger">この操作は取り消せません。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-danger" id="confirmDeletePhoto">削除する</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 写真のドラッグ&ドロップ並べ替え
+        const photoGallery = document.getElementById('photoGallery');
+        if (photoGallery) {
+            new Sortable(photoGallery, {
+                animation: 150,
+                ghostClass: 'bg-light'
+            });
+        }
+
+        // 並び順保存ボタンのイベントリスナー
+        const sortPhotosBtn = document.getElementById('sortPhotosBtn');
+        if (sortPhotosBtn) {
+            sortPhotosBtn.addEventListener('click', function() {
+                const photoCards = document.querySelectorAll('.photo-card');
+                const sortOrder = {};
+                
+                photoCards.forEach((card, index) => {
+                    const photoId = card.getAttribute('data-id');
+                    sortOrder[photoId] = index;
+                });
+                
+                // 並び順を保存
+                fetch('/admin/pictures/<%= category.id %>/album/<%= album.id %>/photos/updateOrder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(sortOrder)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('写真の並び順を保存しました');
+                    } else {
+                        alert('並び順の保存に失敗しました: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('並び順の保存中にエラーが発生しました');
+                });
+            });
+        }
+
+        // サムネイル設定のイベントリスナー
+        const thumbnailRadios = document.querySelectorAll('.set-thumbnail');
+        thumbnailRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    const photoId = this.value;
+                    
+                    // サムネイルを設定
+                    fetch('/admin/pictures/<%= category.id %>/album/<%= album.id %>/setThumbnail', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ thumbnail_photo_id: photoId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 成功メッセージは表示しない（UIがうるさくなるため）
+                        } else {
+                            alert('サムネイル設定に失敗しました: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('サムネイル設定中にエラーが発生しました');
+                    });
+                }
+            });
+        });
+
+        // 写真アップロードのイベントリスナー
+        const uploadButton = document.getElementById('uploadButton');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = uploadProgress.querySelector('.progress-bar');
+        
+        uploadButton.addEventListener('click', function() {
+            const fileInput = document.getElementById('photos');
+            if (fileInput.files.length === 0) {
+                alert('アップロードする写真を選択してください');
+                return;
+            }
+            
+            const formData = new FormData(uploadForm);
+            
+            // プログレスバーを表示
+            uploadProgress.classList.remove('d-none');
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', 0);
+            
+            // アップロード処理
+            fetch('/admin/pictures/<%= category.id %>/album/<%= album.id %>/photos/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 成功したらページをリロード
+                    window.location.reload();
+                } else {
+                    alert('アップロードに失敗しました: ' + data.message);
+                    uploadProgress.classList.add('d-none');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('アップロード中にエラーが発生しました');
+                uploadProgress.classList.add('d-none');
+            });
+            
+            // プログレスバーのシミュレーション（実際のアップロード進捗は取得できないため）
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                if (progress > 90) {
+                    clearInterval(interval);
+                }
+                progressBar.style.width = progress + '%';
+                progressBar.setAttribute('aria-valuenow', progress);
+            }, 300);
+        });
+
+        // 写真編集のイベントリスナー
+        const editButtons = document.querySelectorAll('.edit-photo');
+        const editPhotoModal = new bootstrap.Modal(document.getElementById('editPhotoModal'));
+        const editPhotoForm = document.getElementById('editPhotoForm');
+        const savePhotoButton = document.getElementById('savePhotoButton');
+        
+        editButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const photoId = this.getAttribute('data-id');
+                
+                // 写真情報を取得
+                fetch(`/admin/pictures/<%= category.id %>/album/<%= album.id %>/photos/${photoId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const photo = data.photo;
+                        document.getElementById('editPhotoId').value = photo.id;
+                        document.getElementById('editPhotoTitle').value = photo.title || '';
+                        document.getElementById('editPhotoDescription').value = photo.description || '';
+                        document.getElementById('editPhotoPrivacyLevel').value = photo.privacy_level;
+                        
+                        // モーダルを表示
+                        editPhotoModal.show();
+                    } else {
+                        alert('写真情報の取得に失敗しました: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('写真情報の取得中にエラーが発生しました');
+                });
+            });
+        });
+        
+        savePhotoButton.addEventListener('click', function() {
+            const photoId = document.getElementById('editPhotoId').value;
+            const formData = new FormData(editPhotoForm);
+            const photoData = {};
+            
+            for (const [key, value] of formData.entries()) {
+                photoData[key] = value;
+            }
+            
+            // 写真情報を更新
+            fetch(`/admin/pictures/<%= category.id %>/album/<%= album.id %>/photos/${photoId}/edit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(photoData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 成功したらページをリロード
+                    window.location.reload();
+                } else {
+                    alert('写真情報の更新に失敗しました: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('写真情報の更新中にエラーが発生しました');
+            });
+        });
+
+        // 写真削除のイベントリスナー
+        const deleteButtons = document.querySelectorAll('.delete-photo');
+        const deletePhotoModal = new bootstrap.Modal(document.getElementById('deletePhotoModal'));
+        const photoTitleElement = document.getElementById('photoTitle');
+        const confirmDeletePhotoButton = document.getElementById('confirmDeletePhoto');
+        let photoIdToDelete;
+        
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                photoIdToDelete = this.getAttribute('data-id');
+                const photoTitle = this.getAttribute('data-title');
+                photoTitleElement.textContent = photoTitle;
+                
+                // モーダルを表示
+                deletePhotoModal.show();
+            });
+        });
+        
+        confirmDeletePhotoButton.addEventListener('click', function() {
+            if (photoIdToDelete) {
+                // 写真を削除
+                fetch(`/admin/pictures/<%= category.id %>/album/<%= album.id %>/photos/${photoIdToDelete}/delete`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 成功したらページをリロード
+                        window.location.reload();
+                    } else {
+                        alert('写真の削除に失敗しました: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('写真の削除中にエラーが発生しました');
+                });
+            }
+        });
+    });
+</script>
+
+<%- include('../../partials/admin/footer') %> 

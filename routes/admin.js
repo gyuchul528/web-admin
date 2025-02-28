@@ -1,10 +1,20 @@
 const express = require('express');
 const router = express.Router();
+const mysql = require('mysql2/promise'); // Promise版を使用
 const multer = require('multer');
-const sharp = require('sharp');
-const fs = require('fs-extra');
 const path = require('path');
-const pool = require('../db');  // データベース接続は db.js から取得
+const fs = require('fs');
+
+// データベースプール作成
+const pool = mysql.createPool({
+    host: 'localhost',
+    user: 'root',
+    password: 'root123',
+    database: 'myapp',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
 
 // 添加调试日志
 console.log('Admin router loaded');
@@ -146,6 +156,70 @@ router.get('/pages/:categoryId/list', async (req, res) => {
     }
 });
 
+// ページ追加画面の表示
+router.get('/pages/:categoryId/add', async (req, res) => {
+    try {
+        const categoryId = req.params.categoryId;
+        
+        // カテゴリー情報を取得
+        const [categories] = await pool.query(
+            'SELECT * FROM categories WHERE id = ?',
+            [categoryId]
+        );
+
+        if (!categories || categories.length === 0) {
+            return res.status(404).send('カテゴリーが見つかりません');
+        }
+
+        res.render('admin/pages/add', {
+            category: categories[0]
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).send('データベースエラー');
+    }
+});
+
+// ページ追加の処理
+router.post('/pages/:categoryId/add', async (req, res) => {
+    try {
+        const categoryId = req.params.categoryId;
+        const { title, content, sort_order = 0, status = 1 } = req.body;
+        
+        console.log('Received form data:', req.body); // デバッグ用ログ
+        
+        // タイトルの必須チェック
+        if (!title) {
+            return res.status(400).json({
+                success: false,
+                message: 'タイトルは必須です'
+            });
+        }
+        
+        // ページを追加
+        const [result] = await pool.query(
+            `INSERT INTO pages 
+            (category_id, title, content, sort_order, status) 
+            VALUES (?, ?, ?, ?, ?)`,
+            [categoryId, title, content, sort_order, status]
+        );
+
+        res.json({
+            success: true,
+            id: result.insertId,
+            message: 'ページが正常に追加されました'
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
+    }
+});
+
 // 記事モデルの一覧表示
 router.get('/articles/:categoryId/list', async (req, res) => {
     try {
@@ -236,7 +310,6 @@ router.get('/products/:categoryId/list', async (req, res) => {
     }
 });
 
-// 写真一覧表示
 router.get('/pictures/:categoryId/list', async (req, res) => {
     try {
         const categoryId = req.params.categoryId;
@@ -251,59 +324,41 @@ router.get('/pictures/:categoryId/list', async (req, res) => {
             return res.status(404).send('カテゴリーが見つかりません');
         }
 
-        // アルバム一覧を取得
+        // アルバム一覧を取得（写真数とサムネイル情報も含む）
         const [albums] = await pool.query(
-            'SELECT * FROM albums ORDER BY sort_order ASC, id DESC'
-        );
-
-        // 各アルバムの写真数を取得
-        for (let album of albums) {
-            const [photos] = await pool.query(
-                'SELECT COUNT(*) as count FROM photos WHERE album_id = ?',
-                [album.id]
-            );
-            album.photoCount = photos[0].count;
-        }
-
-        res.render('admin/pictures/list', {
-            category: categories[0],
-            albums: albums
-        });
-
-    } catch (err) {
-        console.error('Database error:', err);
-        res.status(500).send('データベースエラー');
-    }
-});
-
-// 写真アップロードページの表示
-router.get('/pictures/:categoryId/upload', async (req, res) => {
-    try {
-        const categoryId = req.params.categoryId;
-        
-        // カテゴリー情報を取得
-        const [categories] = await pool.query(
-            'SELECT * FROM categories WHERE id = ?',
+            `SELECT 
+                a.*,
+                (SELECT COUNT(*) FROM photos WHERE album_id = a.id) as photo_count,
+                p.filename as thumbnail_filename,
+                DATE_FORMAT(a.created_at, '%Y-%m-%d %H:%i') as formatted_created_at,
+                DATE_FORMAT(a.updated_at, '%Y-%m-%d %H:%i') as formatted_updated_at
+            FROM albums a
+            LEFT JOIN photos p ON a.thumbnail_photo_id = p.id
+            WHERE a.category_id = ?
+            ORDER BY a.sort_order ASC, a.id DESC`,
             [categoryId]
         );
 
-        if (!categories || categories.length === 0) {
-            return res.status(404).send('カテゴリーが見つかりません');
-        }
+        // サムネイルURLを追加
+        albums.forEach(album => {
+            if (album.thumbnail_filename) {
+                album.thumbnail_url = `/uploads/photos/${album.thumbnail_filename}`;
+            } else {
+                album.thumbnail_url = null;
+            }
+        });
 
-        // アルバム一覧を取得
-        const [albums] = await pool.query(
-            'SELECT * FROM albums ORDER BY sort_order ASC, id DESC'
-        );
-
-        res.render('admin/pictures/upload', {
+        // 一覧画面を表示
+        res.render('admin/pictures/list', {
             category: categories[0],
-            albums: albums
+            albums: albums,
+            message: req.query.message || null,
+            messageType: req.query.messageType || 'info'
         });
 
     } catch (err) {
         console.error('Database error:', err);
-        res.status(500).send('データベースエラー');
+        res.status(500).send('データベースエラー: ' + err.message);
     }
 });
 
@@ -656,7 +711,7 @@ router.post('/content/delete/:id', async (req, res) => {
 });
 
 // アップロードディレクトリの作成
-const uploadDir = 'public/uploads';
+const uploadDir = 'public/uploads/products';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -749,7 +804,7 @@ router.post('/articles/:categoryId/add', upload.single('thumbnail'), async (req,
         const { title, content, summary, author, status } = req.body;
         
         // アップロードされた画像のパス
-        const thumbnailPath = req.file ? `/uploads/${req.file.filename}` : null;
+        const thumbnailPath = req.file ? `/uploads/products/${req.file.filename}` : null;
 
         // 記事を追加
         const [result] = await pool.query(
@@ -811,14 +866,14 @@ router.post('/articles/edit/:id', upload.single('thumbnail'), async (req, res) =
         // アップロードされた新しい画像のパス
         let thumbnailPath = null;
         if (req.file) {
-            thumbnailPath = `/uploads/${req.file.filename}`;
+            thumbnailPath = `/uploads/products/${req.file.filename}`;
         }
 
         // 既存の画像パスを取得
         const [currentArticle] = await pool.query(
             'SELECT thumbnail FROM articles WHERE id = ?',
             [articleId]
-        ]);
+        );
 
         let updateQuery;
         let updateParams;
@@ -862,36 +917,52 @@ router.post('/articles/edit/:id', upload.single('thumbnail'), async (req, res) =
 });
 
 // 記事削除の処理
-router.post('/articles/:articleId/delete', async (req, res) => {
-    let connection;
+router.post('/articles/delete/:id', async (req, res) => {
     try {
-        const articleId = req.params.articleId;
-        
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
+        const articleId = req.params.id;
+
+        // 記事の情報を取得（サムネイル画像のパスを取得するため）
+        const [articles] = await pool.query(
+            'SELECT thumbnail FROM articles WHERE id = ?',
+            [articleId]
+        );
+
+        if (!articles || articles.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: '記事が見つかりません'
+            });
+        }
 
         // 記事を削除
-        await connection.query(
+        await pool.query(
             'DELETE FROM articles WHERE id = ?',
             [articleId]
         );
 
-        await connection.commit();
-        
+        // サムネイル画像が存在する場合、ファイルも削除
+        if (articles[0].thumbnail) {
+            const fs = require('fs');
+            const path = require('path');
+            const filePath = path.join(__dirname, '../public', articles[0].thumbnail);
+            
+            // ファイルが存在する場合のみ削除
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
         res.json({
             success: true,
             message: '記事を削除しました'
         });
 
     } catch (err) {
-        if (connection) await connection.rollback();
         console.error('Database error:', err);
         res.status(500).json({
             success: false,
             message: 'データベースエラー: ' + err.message
         });
-    } finally {
-        if (connection) connection.release();
     }
 });
 
@@ -1104,7 +1175,7 @@ router.post('/products/:categoryId/add',
         }
 
         // サムネイル画像のパスを修正
-        const thumbnailPath = req.file ? `/uploads/${req.file.filename}` : null;
+        const thumbnailPath = req.file ? '/uploads/products/' + req.file.filename : null;
 
         // コネクションを取得
         connection = await pool.getConnection();
@@ -1121,7 +1192,7 @@ router.post('/products/:categoryId/add',
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [categoryId, 
                  product_category_id || null, 
-                 subcategory_id || null, 
+                 subcategory_id === '' ? null : subcategory_id || null, 
                  name, 
                  summary || null, 
                  description || null, 
@@ -1320,7 +1391,7 @@ router.post('/products/:categoryId/edit/:productId', upload.single('thumbnail'),
         } = req.body;
 
         // 新しい画像がアップロードされた場合のパス
-        const thumbnailPath = req.file ? `/uploads/${req.file.filename}` : current_thumbnail;
+        const thumbnailPath = req.file ? '/uploads/products/' + req.file.filename : current_thumbnail;
 
         connection = await pool.getConnection();
         await connection.beginTransaction();
@@ -1338,7 +1409,7 @@ router.post('/products/:categoryId/edit/:productId', upload.single('thumbnail'),
                 status = ?
             WHERE id = ? AND category_id = ?`,
             [product_category_id || null, 
-             subcategory_id || null,
+             subcategory_id === '' ? null : subcategory_id || null,
              name,
              summary || null,
              description || null,
@@ -1431,56 +1502,63 @@ router.post('/products/:categoryId/delete/:productId', async (req, res) => {
     }
 });
 
-// アルバム一覧表示
-router.get('/albums', async (req, res) => {
+// ページ編集画面の表示
+router.get('/pages/edit/:id', async (req, res) => {
     try {
-        const [albums] = await pool.query(
-            'SELECT * FROM albums ORDER BY sort_order ASC, id DESC'
-        );
+        const pageId = req.params.id;
         
-        // 各アルバムの写真数を取得
-        for (let album of albums) {
-            const [photos] = await pool.query(
-                'SELECT COUNT(*) as count FROM photos WHERE album_id = ?',
-                [album.id]
-            );
-            album.photoCount = photos[0].count;
+        // ページ情報を取得
+        const [pages] = await pool.query(
+            `SELECT p.*, c.name as category_name 
+            FROM pages p
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE p.id = ?`,
+            [pageId]
+        );
+
+        if (!pages || pages.length === 0) {
+            return res.status(404).send('ページが見つかりません');
         }
 
-        res.render('admin/albums/list', { albums });
+        res.render('admin/pages/edit', {
+            page: pages[0]
+        });
+
     } catch (err) {
         console.error('Database error:', err);
         res.status(500).send('データベースエラー');
     }
 });
 
-// アルバム作成画面
-router.get('/albums/create', (req, res) => {
-    res.render('admin/albums/create');
-});
-
-// アルバム作成処理
-router.post('/albums/create', express.json(), async (req, res) => {
+// ページ更新の処理
+router.post('/pages/edit/:id', async (req, res) => {
     try {
-        const { name, description, privacy_level, sort_order } = req.body;
+        const pageId = req.params.id;
+        const { title, content, sort_order = 0, status = 1 } = req.body;
         
-        if (!name || !name.trim()) {
+        console.log('Received form data for update:', req.body); // デバッグ用ログ
+        
+        // タイトルの必須チェック
+        if (!title) {
             return res.status(400).json({
                 success: false,
-                message: 'アルバム名は必須です'
+                message: 'タイトルは必須です'
             });
         }
-
-        const [result] = await pool.query(
-            'INSERT INTO albums (name, description, privacy_level, sort_order) VALUES (?, ?, ?, ?)',
-            [name.trim(), description?.trim() || null, privacy_level || 1, sort_order || 0]
+        
+        // ページを更新
+        await pool.query(
+            `UPDATE pages 
+            SET title = ?, content = ?, sort_order = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?`,
+            [title, content, sort_order, status, pageId]
         );
 
         res.json({
             success: true,
-            message: 'アルバムを作成しました',
-            albumId: result.insertId
+            message: 'ページが正常に更新されました'
         });
+
     } catch (err) {
         console.error('Database error:', err);
         res.status(500).json({
@@ -1490,67 +1568,554 @@ router.post('/albums/create', express.json(), async (req, res) => {
     }
 });
 
-// 写真アップロード設定
-const photoUpload = multer({
-    storage: multer.diskStorage({
-        destination: (req, file, cb) => {
-            const dir = 'public/uploads/photos';
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
-            }
-            cb(null, dir);
-        },
-        filename: (req, file, cb) => {
-            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-            cb(null, uniqueSuffix + path.extname(file.originalname));
+// ページ削除の処理
+router.post('/pages/delete/:id', async (req, res) => {
+    try {
+        const pageId = req.params.id;
+        
+        // 削除前にカテゴリーIDを取得（リダイレクト用）
+        const [pages] = await pool.query(
+            'SELECT category_id FROM pages WHERE id = ?',
+            [pageId]
+        );
+        
+        if (!pages || pages.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'ページが見つかりません'
+            });
         }
-    }),
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('画像ファイルのみアップロード可能です。'));
-        }
-    },
-    limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB
+        
+        const categoryId = pages[0].category_id;
+        
+        // ページを削除
+        await pool.query(
+            'DELETE FROM pages WHERE id = ?',
+            [pageId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'ページが正常に削除されました',
+            categoryId: categoryId
+        });
+        
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
     }
 });
 
-// 写真アップロード処理
-router.post('/albums/:albumId/photos/upload', photoUpload.array('photos', 20), async (req, res) => {
+// ページの表示順序更新
+router.post('/pages/updateOrder', async (req, res) => {
     let connection;
     try {
-        const albumId = req.params.albumId;
-        const files = req.files;
+        const orders = req.body;
         
+        // コネクションを取得
+        connection = await pool.getConnection();
+        
+        // トランザクション開始
+        await connection.beginTransaction();
+        
+        // 各ページの表示順序を更新
+        for (const [id, order] of Object.entries(orders)) {
+            await connection.query(
+                'UPDATE pages SET sort_order = ? WHERE id = ?',
+                [order, id]
+            );
+        }
+        
+        // トランザクションをコミット
+        await connection.commit();
+        
+        res.json({ 
+            success: true, 
+            message: '表示順序を更新しました' 
+        });
+
+    } catch (error) {
+        // エラーが発生した場合はロールバック
+        if (connection) {
+            await connection.rollback();
+        }
+        console.error('Error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '更新に失敗しました：' + error.message 
+        });
+    } finally {
+        // コネクションを解放
+        if (connection) {
+            connection.release();
+        }
+    }
+});
+
+// アップロードディレクトリの作成（写真用）
+const photoUploadDir = 'public/uploads/photos';
+if (!fs.existsSync(photoUploadDir)) {
+    fs.mkdirSync(photoUploadDir, { recursive: true });
+}
+
+// 写真アップロード用のmulter設定
+const photoStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, photoUploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const photoUpload = multer({
+    storage: photoStorage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB制限
+    }
+});
+
+// アルバム追加画面の表示
+router.get('/pictures/:categoryId/album/add', async (req, res) => {
+    try {
+        const categoryId = req.params.categoryId;
+        
+        // カテゴリー情報を取得
+        const [categories] = await pool.query(
+            'SELECT * FROM categories WHERE id = ?',
+            [categoryId]
+        );
+
+        if (!categories || categories.length === 0) {
+            return res.status(404).send('カテゴリーが見つかりません');
+        }
+
+        // サブカテゴリー情報を取得（もしあれば）
+        const [subcategories] = await pool.query(
+            'SELECT * FROM subcategories WHERE category_id = ? ORDER BY sort_order ASC',
+            [categoryId]
+        );
+
+        res.render('admin/pictures/album_add', {
+            category: categories[0],
+            subcategories: subcategories
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).send('データベースエラー: ' + err.message);
+    }
+});
+
+// アルバム追加の処理
+router.post('/pictures/:categoryId/album/add', async (req, res) => {
+    let connection;
+    try {
+        const categoryId = req.params.categoryId;
+        const { 
+            name, 
+            description, 
+            subcategory_id = null, 
+            privacy_level = 0, 
+            sort_order = 0 
+        } = req.body;
+
+        // subcategory_idが空文字列の場合はNULLに設定
+        const finalSubcategoryId = subcategory_id === '' ? null : subcategory_id;
+
+        // 必須項目のバリデーション
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: 'アルバム名は必須です'
+            });
+        }
+
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        for (const file of files) {
-            // 画像情報の取得
-            const metadata = await sharp(file.path).metadata();
-            
-            // データベースに写真情報を保存
-            await connection.query(
-                `INSERT INTO photos (
-                    album_id, filename, original_filename, file_size, 
-                    mime_type, width, height
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    albumId,
-                    '/uploads/photos/' + file.filename,
-                    file.originalname,
-                    file.size,
-                    file.mimetype,
-                    metadata.width,
-                    metadata.height
-                ]
-            );
+        // アルバムを追加
+        const [result] = await connection.query(
+            `INSERT INTO albums 
+            (category_id, name, description, subcategory_id, privacy_level, sort_order) 
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [categoryId, name, description, finalSubcategoryId, privacy_level, sort_order]
+        );
+
+        await connection.commit();
+
+        res.json({
+            success: true,
+            message: 'アルバムを作成しました',
+            albumId: result.insertId
+        });
+
+    } catch (err) {
+        if (connection) await connection.rollback();
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// アルバム編集画面の表示
+router.get('/pictures/:categoryId/album/edit/:albumId', async (req, res) => {
+    try {
+        const { categoryId, albumId } = req.params;
+        
+        // カテゴリー情報を取得
+        const [categories] = await pool.query(
+            'SELECT * FROM categories WHERE id = ?',
+            [categoryId]
+        );
+
+        if (!categories || categories.length === 0) {
+            return res.status(404).send('カテゴリーが見つかりません');
+        }
+
+        // アルバム情報を取得
+        const [albums] = await pool.query(
+            `SELECT 
+                a.*,
+                p.filename as thumbnail_filename,
+                DATE_FORMAT(a.created_at, '%Y-%m-%d %H:%i') as formatted_created_at,
+                DATE_FORMAT(a.updated_at, '%Y-%m-%d %H:%i') as formatted_updated_at
+            FROM albums a
+            LEFT JOIN photos p ON a.thumbnail_photo_id = p.id
+            WHERE a.id = ? AND a.category_id = ?`,
+            [albumId, categoryId]
+        );
+
+        if (!albums || albums.length === 0) {
+            return res.status(404).send('アルバムが見つかりません');
+        }
+
+        // サムネイルURLを追加
+        if (albums[0].thumbnail_filename) {
+            albums[0].thumbnail_url = `/uploads/photos/${albums[0].thumbnail_filename}`;
+        } else {
+            albums[0].thumbnail_url = null;
+        }
+
+        // サブカテゴリー情報を取得（もしあれば）
+        const [subcategories] = await pool.query(
+            'SELECT * FROM subcategories WHERE category_id = ? ORDER BY sort_order ASC',
+            [categoryId]
+        );
+
+        res.render('admin/pictures/album_edit', {
+            category: categories[0],
+            album: albums[0],
+            subcategories: subcategories
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).send('データベースエラー: ' + err.message);
+    }
+});
+
+// アルバム更新の処理
+router.post('/pictures/:categoryId/album/edit/:albumId', async (req, res) => {
+    let connection;
+    try {
+        const { categoryId, albumId } = req.params;
+        const { 
+            name, 
+            description, 
+            subcategory_id = null, 
+            privacy_level = 0, 
+            sort_order = 0 
+        } = req.body;
+
+        // 必須項目のバリデーション
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: 'アルバム名は必須です'
+            });
+        }
+
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // アルバムを更新
+        await connection.query(
+            `UPDATE albums 
+            SET name = ?, description = ?, subcategory_id = ?, privacy_level = ?, 
+                sort_order = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND category_id = ?`,
+            [name, description, subcategory_id === '' ? null : subcategory_id || null, privacy_level, sort_order, albumId, categoryId]
+        );
+
+        await connection.commit();
+
+        res.json({
+            success: true,
+            message: 'アルバムを更新しました'
+        });
+
+    } catch (err) {
+        if (connection) await connection.rollback();
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// アルバム削除の処理
+router.post('/pictures/:categoryId/album/delete/:albumId', async (req, res) => {
+    let connection;
+    try {
+        const { categoryId, albumId } = req.params;
+
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        console.log(`アルバム削除処理開始: ID=${albumId}, カテゴリID=${categoryId}`);
+
+        // 外部キー制約チェックを一時的に無効化
+        await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+        console.log('外部キー制約チェックを無効化しました');
+
+        // albumsテーブルのthumbnail_photo_idをNULLに設定
+        await connection.query(
+            'UPDATE albums SET thumbnail_photo_id = NULL WHERE thumbnail_photo_id IN (SELECT id FROM photos WHERE album_id = ?)',
+            [albumId]
+        );
+        console.log('サムネイル参照をクリアしました');
+
+        // アルバム内の写真を取得（ファイル削除のため）
+        const [photos] = await connection.query(
+            'SELECT filename FROM photos WHERE album_id = ?',
+            [albumId]
+        );
+        console.log(`関連写真を取得しました: ${photos.length}件`);
+
+        // photo_tag_relationsテーブルから関連レコードを削除
+        await connection.query(
+            'DELETE FROM photo_tag_relations WHERE photo_id IN (SELECT id FROM photos WHERE album_id = ?)',
+            [albumId]
+        );
+        console.log('写真タグの関連を削除しました');
+
+        // アルバム内の写真を削除
+        await connection.query(
+            'DELETE FROM photos WHERE album_id = ?',
+            [albumId]
+        );
+        console.log('写真レコードを削除しました');
+
+        // アルバムを削除
+        await connection.query(
+            'DELETE FROM albums WHERE id = ? AND category_id = ?',
+            [albumId, categoryId]
+        );
+        console.log('アルバムレコードを削除しました');
+
+        // 外部キー制約チェックを元に戻す
+        await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+        console.log('外部キー制約チェックを有効化しました');
+
+        // 写真ファイルを削除
+        for (const photo of photos) {
+            const filePath = path.join(__dirname, '../public/uploads/photos', photo.filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+                console.log(`写真ファイルを削除しました: ${photo.filename}`);
+            }
         }
 
         await connection.commit();
+        console.log('トランザクションをコミットしました');
         
+        // リクエストがAjaxかどうかを判定
+        const isAjaxRequest = req.xhr || req.headers.accept.indexOf('json') > -1;
+        
+        if (isAjaxRequest) {
+            // Ajaxリクエストの場合はJSON形式でレスポンス
+            res.json({
+                success: true,
+                message: 'アルバムが正常に削除されました'
+            });
+        } else {
+            // 通常のリクエストの場合はリダイレクト
+            // リダイレクト前にレスポンスヘッダーを設定して、ブラウザがキャッシュしないようにする
+            res.setHeader('Cache-Control', 'no-store');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+            res.redirect(`/admin/pictures/${categoryId}/list`);
+        }
+    } catch (error) {
+        if (connection) {
+            await connection.rollback();
+            // 外部キー制約チェックを元に戻す
+            await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+        }
+        console.error('Database error:', error);
+        
+        // リクエストがAjaxかどうかを判定
+        const isAjaxRequest = req.xhr || req.headers.accept.indexOf('json') > -1;
+        
+        if (isAjaxRequest) {
+            // Ajaxリクエストの場合はJSON形式でエラーレスポンス
+            res.status(500).json({
+                success: false,
+                message: 'アルバムの削除中にエラーが発生しました: ' + error.message
+            });
+        } else {
+            // 通常のリクエストの場合はセッションにエラーメッセージを保存してリダイレクト
+            req.session.errorMessage = 'アルバムの削除中にエラーが発生しました: ' + error.message;
+            res.redirect(`/admin/pictures/${req.params.categoryId}/list`);
+        }
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+});
+
+// 写真一覧（アルバム詳細）の表示
+router.get('/pictures/:categoryId/album/:albumId/photos', async (req, res) => {
+    try {
+        const { categoryId, albumId } = req.params;
+        
+        // カテゴリー情報を取得
+        const [categories] = await pool.query(
+            'SELECT * FROM categories WHERE id = ?',
+            [categoryId]
+        );
+
+        if (!categories || categories.length === 0) {
+            return res.status(404).send('カテゴリーが見つかりません');
+        }
+
+        // アルバム情報を取得
+        const [albums] = await pool.query(
+            `SELECT 
+                a.*,
+                DATE_FORMAT(a.created_at, '%Y-%m-%d %H:%i') as formatted_created_at,
+                DATE_FORMAT(a.updated_at, '%Y-%m-%d %H:%i') as formatted_updated_at
+            FROM albums a
+            WHERE a.id = ? AND a.category_id = ?`,
+            [albumId, categoryId]
+        );
+
+        if (!albums || albums.length === 0) {
+            return res.status(404).send('アルバムが見つかりません');
+        }
+
+        // 写真一覧を取得
+        const [photos] = await pool.query(
+            `SELECT * FROM photos 
+            WHERE album_id = ? 
+            ORDER BY sort_order ASC, id ASC`,
+            [albumId]
+        );
+
+        res.render('admin/pictures/photos', {
+            category: categories[0],
+            album: albums[0],
+            photos: photos,
+            message: req.query.message || null,
+            messageType: req.query.messageType || 'info'
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).send('データベースエラー: ' + err.message);
+    }
+});
+
+// 写真アップロードの処理
+router.post('/pictures/:categoryId/album/:albumId/photos/upload', photoUpload.array('photos', 20), async (req, res) => {
+    let connection;
+    try {
+        const { categoryId, albumId } = req.params;
+        const { privacy_level = 1 } = req.body;
+        const files = req.files;
+
+        if (!files || files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'アップロードするファイルが選択されていません'
+            });
+        }
+
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 各写真をデータベースに登録
+        const insertPromises = files.map(async (file, index) => {
+            // 画像のサイズを取得（オプション）
+            let width = null;
+            let height = null;
+            
+            try {
+                const dimensions = await getImageDimensions(path.join(photoUploadDir, file.filename));
+                width = dimensions.width;
+                height = dimensions.height;
+            } catch (error) {
+                console.error('Error getting image dimensions:', error);
+            }
+
+            // 写真をデータベースに登録
+            return connection.query(
+                `INSERT INTO photos 
+                (album_id, filename, original_filename, file_size, mime_type, width, height, privacy_level, sort_order) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    albumId,
+                    file.filename,
+                    file.originalname,
+                    file.size,
+                    file.mimetype,
+                    width,
+                    height,
+                    privacy_level,
+                    index // 初期の並び順はアップロード順
+                ]
+            );
+        });
+
+        await Promise.all(insertPromises);
+
+        // アルバムのサムネイルが設定されていない場合、最初の写真をサムネイルに設定
+        const [albumCheck] = await connection.query(
+            'SELECT thumbnail_photo_id FROM albums WHERE id = ?',
+            [albumId]
+        );
+
+        if (!albumCheck[0].thumbnail_photo_id) {
+            // 最初の写真のIDを取得
+            const [firstPhoto] = await connection.query(
+                'SELECT id FROM photos WHERE album_id = ? ORDER BY id ASC LIMIT 1',
+                [albumId]
+            );
+
+            if (firstPhoto.length > 0) {
+                await connection.query(
+                    'UPDATE albums SET thumbnail_photo_id = ? WHERE id = ?',
+                    [firstPhoto[0].id, albumId]
+                );
+            }
+        }
+
+        await connection.commit();
+
         res.json({
             success: true,
             message: `${files.length}枚の写真をアップロードしました`
@@ -1568,38 +2133,382 @@ router.post('/albums/:albumId/photos/upload', photoUpload.array('photos', 20), a
     }
 });
 
-// アルバム削除処理
-router.post('/albums/:albumId/delete', async (req, res) => {
+// 写真情報の取得（編集用）
+router.get('/pictures/:categoryId/album/:albumId/photos/:photoId', async (req, res) => {
+    try {
+        const { photoId } = req.params;
+        
+        // 写真情報を取得
+        const [photos] = await pool.query(
+            'SELECT * FROM photos WHERE id = ?',
+            [photoId]
+        );
+
+        if (!photos || photos.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: '写真が見つかりません'
+            });
+        }
+
+        res.json({
+            success: true,
+            photo: photos[0]
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
+    }
+});
+
+// 写真情報の更新
+router.post('/pictures/:categoryId/album/:albumId/photos/:photoId/edit', async (req, res) => {
+    try {
+        const { photoId } = req.params;
+        const { title, description, privacy_level } = req.body;
+
+        // 写真情報を更新
+        await pool.query(
+            `UPDATE photos 
+            SET title = ?, description = ?, privacy_level = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?`,
+            [title, description, privacy_level, photoId]
+        );
+
+        res.json({
+            success: true,
+            message: '写真情報を更新しました'
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
+    }
+});
+
+// 写真の削除
+router.post('/pictures/:categoryId/album/:albumId/photos/:photoId/delete', async (req, res) => {
     let connection;
     try {
-        const albumId = req.params.albumId;
-        
+        const { albumId, photoId } = req.params;
+
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        // アルバム内の写真を取得
+        // 写真情報を取得（ファイル削除のため）
         const [photos] = await connection.query(
-            'SELECT filename FROM photos WHERE album_id = ?',
+            'SELECT filename, id FROM photos WHERE id = ?',
+            [photoId]
+        );
+
+        if (!photos || photos.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({
+                success: false,
+                message: '写真が見つかりません'
+            });
+        }
+
+        // アルバムのサムネイルが削除対象の写真かチェック
+        const [albums] = await connection.query(
+            'SELECT thumbnail_photo_id FROM albums WHERE id = ?',
             [albumId]
         );
 
-        // 写真ファイルを削除
-        for (const photo of photos) {
-            const filePath = path.join(__dirname, '../public', photo.filename);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+        // 写真を削除
+        await connection.query(
+            'DELETE FROM photos WHERE id = ?',
+            [photoId]
+        );
+
+        // サムネイルが削除対象だった場合、別の写真をサムネイルに設定
+        if (albums[0].thumbnail_photo_id === parseInt(photoId)) {
+            // 別の写真を取得
+            const [otherPhotos] = await connection.query(
+                'SELECT id FROM photos WHERE album_id = ? ORDER BY id ASC LIMIT 1',
+                [albumId]
+            );
+
+            if (otherPhotos.length > 0) {
+                // 別の写真をサムネイルに設定
+                await connection.query(
+                    'UPDATE albums SET thumbnail_photo_id = ? WHERE id = ?',
+                    [otherPhotos[0].id, albumId]
+                );
+            } else {
+                // 写真がなくなった場合はサムネイルをnullに
+                await connection.query(
+                    'UPDATE albums SET thumbnail_photo_id = NULL WHERE id = ?',
+                    [albumId]
+                );
             }
         }
 
-        // データベースからアルバムと写真を削除
-        await connection.query('DELETE FROM photos WHERE album_id = ?', [albumId]);
-        await connection.query('DELETE FROM albums WHERE id = ?', [albumId]);
+        await connection.commit();
+
+        // 写真ファイルを削除
+        const filePath = path.join(photoUploadDir, photos[0].filename);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        res.json({
+            success: true,
+            message: '写真を削除しました'
+        });
+
+    } catch (err) {
+        if (connection) await connection.rollback();
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 写真の並び順更新
+router.post('/pictures/:categoryId/album/:albumId/photos/updateOrder', async (req, res) => {
+    let connection;
+    try {
+        const sortOrder = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // 各写真の並び順を更新
+        for (const [id, order] of Object.entries(sortOrder)) {
+            await connection.query(
+                'UPDATE photos SET sort_order = ? WHERE id = ?',
+                [order, id]
+            );
+        }
+        
+        await connection.commit();
+        
+        res.json({ 
+            success: true, 
+            message: '写真の並び順を更新しました' 
+        });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '更新に失敗しました：' + error.message 
+        });
+    } finally {
+        // コネクションを解放
+        if (connection) {
+            connection.release();
+        }
+    }
+});
+
+// アルバムのサムネイル設定
+router.post('/pictures/:categoryId/album/:albumId/setThumbnail', async (req, res) => {
+    try {
+        const { albumId } = req.params;
+        const { thumbnail_photo_id } = req.body;
+
+        if (!thumbnail_photo_id) {
+            return res.status(400).json({
+                success: false,
+                message: '写真IDが指定されていません'
+            });
+        }
+
+        // サムネイルを設定
+        await pool.query(
+            'UPDATE albums SET thumbnail_photo_id = ? WHERE id = ?',
+            [thumbnail_photo_id, albumId]
+        );
+
+        res.json({
+            success: true,
+            message: 'サムネイルを設定しました'
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
+    }
+});
+
+// 画像のサイズを取得するヘルパー関数
+function getImageDimensions(filePath) {
+    return new Promise((resolve, reject) => {
+        const sizeOf = require('image-size');
+        try {
+            const dimensions = sizeOf(filePath);
+            resolve(dimensions);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// サブカテゴリー管理画面の表示
+router.get('/pictures/:categoryId/subcategories', async (req, res) => {
+    try {
+        const categoryId = req.params.categoryId;
+        
+        // カテゴリー情報を取得
+        const [categories] = await pool.query(
+            'SELECT * FROM categories WHERE id = ?',
+            [categoryId]
+        );
+
+        if (!categories || categories.length === 0) {
+            return res.status(404).send('カテゴリーが見つかりません');
+        }
+
+        // サブカテゴリー一覧を取得
+        const [subcategories] = await pool.query(
+            `SELECT 
+                s.*,
+                DATE_FORMAT(s.created_at, '%Y-%m-%d %H:%i') as formatted_created_at,
+                DATE_FORMAT(s.updated_at, '%Y-%m-%d %H:%i') as formatted_updated_at
+            FROM subcategories s
+            WHERE s.category_id = ?
+            ORDER BY s.sort_order ASC, s.id ASC`,
+            [categoryId]
+        );
+
+        res.render('admin/pictures/subcategories', {
+            category: categories[0],
+            subcategories: subcategories,
+            message: req.query.message || null,
+            messageType: req.query.messageType || 'info'
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).send('データベースエラー: ' + err.message);
+    }
+});
+
+// サブカテゴリー追加の処理
+router.post('/pictures/:categoryId/subcategories/add', async (req, res) => {
+    let connection;
+    try {
+        const categoryId = req.params.categoryId;
+        const { name, sort_order = 0 } = req.body;
+
+        // 必須項目のバリデーション
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: 'サブカテゴリー名は必須です'
+            });
+        }
+
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // サブカテゴリーを追加
+        const [result] = await connection.query(
+            `INSERT INTO subcategories 
+            (category_id, name, sort_order) 
+            VALUES (?, ?, ?)`,
+            [categoryId, name, sort_order]
+        );
 
         await connection.commit();
 
         res.json({
             success: true,
-            message: 'アルバムを削除しました'
+            message: 'サブカテゴリーを作成しました',
+            subcategoryId: result.insertId
+        });
+
+    } catch (err) {
+        if (connection) await connection.rollback();
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// サブカテゴリー更新の処理
+router.post('/pictures/subcategories/:subcategoryId/update', async (req, res) => {
+    try {
+        const subcategoryId = req.params.subcategoryId;
+        const { name, sort_order = 0 } = req.body;
+
+        // 必須項目のバリデーション
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: 'サブカテゴリー名は必須です'
+            });
+        }
+
+        // サブカテゴリーを更新
+        await pool.query(
+            `UPDATE subcategories 
+            SET name = ?, sort_order = ?, updated_at = NOW()
+            WHERE id = ?`,
+            [name, sort_order, subcategoryId]
+        );
+
+        res.json({
+            success: true,
+            message: 'サブカテゴリーを更新しました'
+        });
+
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'データベースエラー: ' + err.message
+        });
+    }
+});
+
+// サブカテゴリー削除の処理
+router.post('/pictures/subcategories/:subcategoryId/delete', async (req, res) => {
+    let connection;
+    try {
+        const subcategoryId = req.params.subcategoryId;
+
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // このサブカテゴリーを使用しているアルバムのサブカテゴリーIDをnullに設定
+        await connection.query(
+            `UPDATE albums SET subcategory_id = NULL WHERE subcategory_id = ?`,
+            [subcategoryId]
+        );
+
+        // サブカテゴリーを削除
+        await connection.query(
+            `DELETE FROM subcategories WHERE id = ?`,
+            [subcategoryId]
+        );
+
+        await connection.commit();
+
+        res.json({
+            success: true,
+            message: 'サブカテゴリーを削除しました'
         });
 
     } catch (err) {

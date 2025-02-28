@@ -1,0 +1,88 @@
+<%- include('../../partials/admin/header') %>
+
+<main class="px-4">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">新規アルバム作成</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="/admin/pictures" class="btn btn-sm btn-outline-secondary">アルバム一覧に戻る</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form action="/admin/pictures" method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">アルバム名 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">説明</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="category_id" class="form-label">カテゴリー</label>
+                            <select class="form-select" id="category_id" name="category_id">
+                                <option value="">カテゴリーを選択</option>
+                                <% if (categories && categories.length > 0) { %>
+                                    <% categories.forEach(function(category) { %>
+                                        <option value="<%= category.id %>"><%= category.name %></option>
+                                    <% }); %>
+                                <% } %>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="thumbnail" class="form-label">サムネイル画像</label>
+                            <input type="file" class="form-control" id="thumbnail" name="thumbnail" accept="image/*">
+                            <div class="form-text">推奨サイズ: 300x300px</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="status" class="form-label">ステータス</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="published">公開</option>
+                                <option value="draft">下書き</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="photos" class="form-label">写真（複数選択可）</label>
+                            <input type="file" class="form-control" id="photos" name="photos" multiple accept="image/*">
+                            <div class="form-text">一度に最大10枚までアップロード可能です</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">保存</button>
+                            <a href="/admin/pictures" class="btn btn-secondary">キャンセル</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    ヘルプ
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">アルバム作成について</h5>
+                    <p class="card-text">アルバムを作成すると、複数の写真をグループ化して管理できます。</p>
+                    <ul>
+                        <li>アルバム名は必須です</li>
+                        <li>サムネイルを設定しない場合は、最初の写真が自動的にサムネイルになります</li>
+                        <li>後からいつでも写真を追加できます</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<%- include('../../partials/admin/footer') %> 
