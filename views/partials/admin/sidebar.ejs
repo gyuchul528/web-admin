@@ -1,64 +1,60 @@
-<div class="container-fluid">
-  <div class="row">
-    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-      <div class="position-sticky pt-3">
+<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+    <div class="position-sticky pt-3">
         <ul class="nav flex-column">
-          <li class="nav-item">
-            <a class="nav-link <%= (typeof activePage !== 'undefined' && activePage === 'dashboard') ? 'active' : '' %>" href="/admin">
-              <i class="fas fa-tachometer-alt me-2"></i>
-              ダッシュボード
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <%= (typeof activePage !== 'undefined' && activePage === 'products') ? 'active' : '' %>" href="/admin/products">
-              <i class="fas fa-box me-2"></i>
-              製品管理
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <%= (typeof activePage !== 'undefined' && activePage === 'product-categories') ? 'active' : '' %>" href="/admin/product-categories">
-              <i class="fas fa-tags me-2"></i>
-              製品分類
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <%= (typeof activePage !== 'undefined' && activePage === 'articles') ? 'active' : '' %>" href="/admin/articles">
-              <i class="fas fa-newspaper me-2"></i>
-              記事管理
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <%= (typeof activePage !== 'undefined' && activePage === 'pages') ? 'active' : '' %>" href="/admin/pages">
-              <i class="fas fa-file-alt me-2"></i>
-              ページ管理
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <%= (typeof activePage !== 'undefined' && activePage === 'menus') ? 'active' : '' %>" href="/admin/menus">
-              <i class="fas fa-bars me-2"></i>
-              メニュー管理
-            </a>
-          </li>
+            <li class="nav-item">
+                <a class="nav-link <%= (typeof activeMenu !== 'undefined' && activeMenu === 'dashboard') ? 'active' : '' %>" href="/admin">
+                    <i class="fas fa-tachometer-alt"></i>
+                    ダッシュボード
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= (typeof activeMenu !== 'undefined' && activeMenu === 'categories') ? 'active' : '' %>" href="/admin/category/list">
+                    <i class="fas fa-folder"></i>
+                    カテゴリー管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= (typeof activeMenu !== 'undefined' && activeMenu === 'pages') ? 'active' : '' %>" href="/admin/pages">
+                    <i class="fas fa-file-alt"></i>
+                    ページ管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= (typeof activeMenu !== 'undefined' && activeMenu === 'articles') ? 'active' : '' %>" href="/admin/articles">
+                    <i class="fas fa-newspaper"></i>
+                    記事管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= (typeof activeMenu !== 'undefined' && activeMenu === 'products') ? 'active' : '' %>" href="/admin/products">
+                    <i class="fas fa-box"></i>
+                    製品管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= (typeof activeMenu !== 'undefined' && activeMenu === 'pictures') ? 'active' : '' %>" href="/admin/pictures">
+                    <i class="fas fa-images"></i>
+                    写真管理
+                </a>
+            </li>
         </ul>
 
         <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-          <span>システム</span>
+            <span>システム設定</span>
         </h6>
         <ul class="nav flex-column mb-2">
-          <li class="nav-item">
-            <a class="nav-link <%= (typeof activePage !== 'undefined' && activePage === 'settings') ? 'active' : '' %>" href="/admin/settings">
-              <i class="fas fa-cog me-2"></i>
-              設定
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/logout">
-              <i class="fas fa-sign-out-alt me-2"></i>
-              ログアウト
-            </a>
-          </li>
+            <li class="nav-item">
+                <a class="nav-link <%= (typeof activeMenu !== 'undefined' && activeMenu === 'settings') ? 'active' : '' %>" href="/admin/settings">
+                    <i class="fas fa-cog"></i>
+                    サイト設定
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= (typeof activeMenu !== 'undefined' && activeMenu === 'users') ? 'active' : '' %>" href="/admin/users">
+                    <i class="fas fa-users"></i>
+                    ユーザー管理
+                </a>
+            </li>
         </ul>
-      </div>
-    </nav>
-  </div>
-</div> 
+    </div>
+</nav> 

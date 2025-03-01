@@ -96,49 +96,193 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // 結果メッセージ表示用の要素を追加
+        const resultContainer = document.createElement('div');
+        resultContainer.id = 'resultMessage';
+        resultContainer.className = 'alert alert-dismissible fade';
+        resultContainer.style.display = 'none';
+        resultContainer.innerHTML = `
+            <span id="resultMessageText"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.querySelector('main').insertBefore(resultContainer, document.querySelector('.table-responsive'));
+
+        // 結果メッセージを表示する関数
+        function showResultMessage(message, isSuccess) {
+            const resultMessage = document.getElementById('resultMessage');
+            const resultMessageText = document.getElementById('resultMessageText');
+            
+            // XSS対策: テキストコンテンツとして設定（innerHTML ではなく）
+            resultMessage.className = isSuccess 
+                ? 'alert alert-success alert-dismissible fade show' 
+                : 'alert alert-danger alert-dismissible fade show';
+            resultMessageText.textContent = message;
+            resultMessage.style.display = 'block';
+            
+            // 5秒後に自動的に閉じる
+            setTimeout(() => {
+                resultMessage.style.display = 'none';
+            }, 5000);
+        }
+
         // 削除ボタンのイベントリスナー
         const deleteButtons = document.querySelectorAll('.delete-album');
         const albumNameElement = document.getElementById('albumName');
         const confirmDeleteButton = document.getElementById('confirmDelete');
         let albumIdToDelete;
+        let deleteModal;
 
+        // Bootstrapモーダルの初期化
+        if (typeof bootstrap !== 'undefined') {
+            try {
+                deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            } catch (error) {
+                console.error('Bootstrapモーダルの初期化に失敗しました:', error);
+            }
+        }
+
+        // 削除ボタンにイベントリスナーを追加
         deleteButtons.forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function(e) {
+                e.preventDefault(); // デフォルトの動作を防止
+                
+                // データ属性から安全に値を取得
                 albumIdToDelete = this.getAttribute('data-id');
                 const albumName = this.getAttribute('data-name');
-                albumNameElement.textContent = albumName;
+                
+                // 入力値の検証
+                if (!albumIdToDelete || isNaN(parseInt(albumIdToDelete))) {
+                    showResultMessage('無効なアルバムIDです', false);
+                    return;
+                }
+                
+                // XSS対策: テキストコンテンツとして設定
+                if (albumNameElement) {
+                    albumNameElement.textContent = albumName;
+                }
                 
                 // モーダルを表示
-                const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-                deleteModal.show();
+                if (deleteModal) {
+                    try {
+                        deleteModal.show();
+                    } catch (error) {
+                        console.error('モーダル表示エラー:', error);
+                        // フォールバック: 標準の確認ダイアログを使用
+                        if (confirm(`アルバム「${albumName}」を削除してもよろしいですか？この操作は取り消せません。`)) {
+                            deleteAlbum(albumIdToDelete);
+                        }
+                    }
+                } else {
+                    // Bootstrapが利用できない場合は標準の確認ダイアログを使用
+                    if (confirm(`アルバム「${albumName}」を削除してもよろしいですか？この操作は取り消せません。`)) {
+                        deleteAlbum(albumIdToDelete);
+                    }
+                }
             });
         });
 
-        // 削除確認ボタンのイベントリスナー
-        confirmDeleteButton.addEventListener('click', function() {
-            if (albumIdToDelete) {
-                // 削除リクエストを送信
-                fetch(`/admin/pictures/<%= category.id %>/album/delete/${albumIdToDelete}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // 成功したらページをリロード
-                        window.location.reload();
-                    } else {
-                        alert('削除に失敗しました: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('削除処理中にエラーが発生しました');
-                });
+        // 削除処理を実行する関数
+        function deleteAlbum(albumId) {
+            // 入力値の再検証
+            if (!albumId || isNaN(parseInt(albumId))) {
+                showResultMessage('無効なアルバムIDです', false);
+                return;
             }
-        });
+            
+            // ボタンを無効化して連打を防止
+            if (confirmDeleteButton) {
+                confirmDeleteButton.disabled = true;
+                confirmDeleteButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 処理中...';
+            }
+            
+            // CSRF対策（必要に応じて実装）
+            // const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            // 削除リクエストを送信
+            fetch(`/admin/pictures/<%= category.id %>/album/delete/${albumId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    // 'X-CSRF-Token': csrfToken
+                },
+                // credentials: 'same-origin' // Cookieを送信するために必要
+            })
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('アルバムが見つかりません');
+                    } else if (response.status === 403) {
+                        throw new Error('この操作を実行する権限がありません');
+                    } else {
+                        throw new Error(`サーバーエラー: ${response.status}`);
+                    }
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success) {
+                    // 成功メッセージを表示
+                    showResultMessage(data.message || 'アルバムが正常に削除されました', true);
+                    
+                    // モーダルを閉じる
+                    if (deleteModal) {
+                        try {
+                            deleteModal.hide();
+                        } catch (error) {
+                            console.error('モーダル非表示エラー:', error);
+                        }
+                    }
+                    
+                    // 1秒後にページをリロード
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    // エラーメッセージを表示
+                    showResultMessage(data && data.message ? data.message : '削除に失敗しました', false);
+                    
+                    // モーダルを閉じる
+                    if (deleteModal) {
+                        try {
+                            deleteModal.hide();
+                        } catch (error) {
+                            console.error('モーダル非表示エラー:', error);
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showResultMessage('削除処理中にエラーが発生しました: ' + error.message, false);
+                
+                // モーダルを閉じる
+                if (deleteModal) {
+                    try {
+                        deleteModal.hide();
+                    } catch (modalError) {
+                        console.error('モーダル非表示エラー:', modalError);
+                    }
+                }
+            })
+            .finally(() => {
+                // ボタンを元に戻す
+                if (confirmDeleteButton) {
+                    confirmDeleteButton.disabled = false;
+                    confirmDeleteButton.innerHTML = '削除する';
+                }
+            });
+        }
+
+        // 削除確認ボタンのイベントリスナー
+        if (confirmDeleteButton) {
+            confirmDeleteButton.addEventListener('click', function(e) {
+                e.preventDefault(); // デフォルトの動作を防止
+                if (albumIdToDelete) {
+                    deleteAlbum(albumIdToDelete);
+                }
+            });
+        }
     });
 </script>
 

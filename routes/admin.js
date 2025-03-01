@@ -1192,7 +1192,7 @@ router.post('/products/:categoryId/add',
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [categoryId, 
                  product_category_id || null, 
-                 subcategory_id === '' ? null : subcategory_id || null, 
+                 subcategory_id || null, 
                  name, 
                  summary || null, 
                  description || null, 
@@ -1409,7 +1409,7 @@ router.post('/products/:categoryId/edit/:productId', upload.single('thumbnail'),
                 status = ?
             WHERE id = ? AND category_id = ?`,
             [product_category_id || null, 
-             subcategory_id === '' ? null : subcategory_id || null,
+             subcategory_id || null,
              name,
              summary || null,
              description || null,
@@ -1725,9 +1725,6 @@ router.post('/pictures/:categoryId/album/add', async (req, res) => {
             sort_order = 0 
         } = req.body;
 
-        // subcategory_idが空文字列の場合はNULLに設定
-        const finalSubcategoryId = subcategory_id === '' ? null : subcategory_id;
-
         // 必須項目のバリデーション
         if (!name) {
             return res.status(400).json({
@@ -1744,7 +1741,7 @@ router.post('/pictures/:categoryId/album/add', async (req, res) => {
             `INSERT INTO albums 
             (category_id, name, description, subcategory_id, privacy_level, sort_order) 
             VALUES (?, ?, ?, ?, ?, ?)`,
-            [categoryId, name, description, finalSubcategoryId, privacy_level, sort_order]
+            [categoryId, name, description, subcategory_id, privacy_level, sort_order]
         );
 
         await connection.commit();
@@ -1854,7 +1851,7 @@ router.post('/pictures/:categoryId/album/edit/:albumId', async (req, res) => {
             SET name = ?, description = ?, subcategory_id = ?, privacy_level = ?, 
                 sort_order = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ? AND category_id = ?`,
-            [name, description, subcategory_id === '' ? null : subcategory_id || null, privacy_level, sort_order, albumId, categoryId]
+            [name, description, subcategory_id, privacy_level, sort_order, albumId, categoryId]
         );
 
         await connection.commit();
@@ -1881,69 +1878,112 @@ router.post('/pictures/:categoryId/album/delete/:albumId', async (req, res) => {
     let connection;
     try {
         const { categoryId, albumId } = req.params;
+        
+        // 入力値の検証
+        if (!categoryId || !albumId || isNaN(parseInt(categoryId)) || isNaN(parseInt(albumId))) {
+            return res.status(400).json({
+                success: false,
+                message: '無効なパラメータです'
+            });
+        }
+
+        // CSRF保護（必要に応じて実装）
+        // if (!req.csrfToken || req.body._csrf !== req.csrfToken()) {
+        //     return res.status(403).json({
+        //         success: false,
+        //         message: 'CSRF検証に失敗しました'
+        //     });
+        // }
 
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
         console.log(`アルバム削除処理開始: ID=${albumId}, カテゴリID=${categoryId}`);
 
+        // アルバムの存在確認
+        const [albumCheck] = await connection.query(
+            'SELECT id FROM albums WHERE id = ? AND category_id = ?',
+            [albumId, categoryId]
+        );
+
+        if (!albumCheck || albumCheck.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({
+                success: false,
+                message: '指定されたアルバムが見つかりません'
+            });
+        }
+
         // 外部キー制約チェックを一時的に無効化
         await connection.query('SET FOREIGN_KEY_CHECKS = 0');
         console.log('外部キー制約チェックを無効化しました');
 
-        // albumsテーブルのthumbnail_photo_idをNULLに設定
-        await connection.query(
-            'UPDATE albums SET thumbnail_photo_id = NULL WHERE thumbnail_photo_id IN (SELECT id FROM photos WHERE album_id = ?)',
-            [albumId]
-        );
-        console.log('サムネイル参照をクリアしました');
+        try {
+            // albumsテーブルのthumbnail_photo_idをNULLに設定
+            await connection.query(
+                'UPDATE albums SET thumbnail_photo_id = NULL WHERE thumbnail_photo_id IN (SELECT id FROM photos WHERE album_id = ?)',
+                [albumId]
+            );
+            console.log('サムネイル参照をクリアしました');
 
-        // アルバム内の写真を取得（ファイル削除のため）
-        const [photos] = await connection.query(
-            'SELECT filename FROM photos WHERE album_id = ?',
-            [albumId]
-        );
-        console.log(`関連写真を取得しました: ${photos.length}件`);
+            // アルバム内の写真を取得（ファイル削除のため）
+            const [photos] = await connection.query(
+                'SELECT filename FROM photos WHERE album_id = ?',
+                [albumId]
+            );
+            console.log(`関連写真を取得しました: ${photos.length}件`);
 
-        // photo_tag_relationsテーブルから関連レコードを削除
-        await connection.query(
-            'DELETE FROM photo_tag_relations WHERE photo_id IN (SELECT id FROM photos WHERE album_id = ?)',
-            [albumId]
-        );
-        console.log('写真タグの関連を削除しました');
+            // photo_tag_relationsテーブルから関連レコードを削除
+            await connection.query(
+                'DELETE FROM photo_tag_relations WHERE photo_id IN (SELECT id FROM photos WHERE album_id = ?)',
+                [albumId]
+            );
+            console.log('写真タグの関連を削除しました');
 
-        // アルバム内の写真を削除
-        await connection.query(
-            'DELETE FROM photos WHERE album_id = ?',
-            [albumId]
-        );
-        console.log('写真レコードを削除しました');
+            // アルバム内の写真を削除
+            await connection.query(
+                'DELETE FROM photos WHERE album_id = ?',
+                [albumId]
+            );
+            console.log('写真レコードを削除しました');
 
-        // アルバムを削除
-        await connection.query(
-            'DELETE FROM albums WHERE id = ? AND category_id = ?',
-            [albumId, categoryId]
-        );
-        console.log('アルバムレコードを削除しました');
-
-        // 外部キー制約チェックを元に戻す
-        await connection.query('SET FOREIGN_KEY_CHECKS = 1');
-        console.log('外部キー制約チェックを有効化しました');
+            // アルバムを削除
+            await connection.query(
+                'DELETE FROM albums WHERE id = ? AND category_id = ?',
+                [albumId, categoryId]
+            );
+            console.log('アルバムレコードを削除しました');
+        } finally {
+            // 外部キー制約チェックを元に戻す（エラーが発生しても必ず実行）
+            await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+            console.log('外部キー制約チェックを有効化しました');
+        }
 
         // 写真ファイルを削除
-        for (const photo of photos) {
-            const filePath = path.join(__dirname, '../public/uploads/photos', photo.filename);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-                console.log(`写真ファイルを削除しました: ${photo.filename}`);
-            }
-        }
+        const photoDeletePromises = photos.map(photo => {
+            return new Promise((resolve) => {
+                const filePath = path.join(__dirname, '../public/uploads/photos', photo.filename);
+                if (fs.existsSync(filePath)) {
+                    try {
+                        fs.unlinkSync(filePath);
+                        console.log(`写真ファイルを削除しました: ${photo.filename}`);
+                    } catch (fileError) {
+                        // ファイル削除エラーはログに記録するだけで処理は続行
+                        console.error(`ファイル削除エラー: ${photo.filename}`, fileError);
+                    }
+                }
+                resolve();
+            });
+        });
+
+        // すべてのファイル削除処理を並行して実行
+        await Promise.all(photoDeletePromises);
 
         await connection.commit();
         console.log('トランザクションをコミットしました');
         
         // リクエストがAjaxかどうかを判定
-        const isAjaxRequest = req.xhr || req.headers.accept.indexOf('json') > -1;
+        const isAjaxRequest = req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1);
         
         if (isAjaxRequest) {
             // Ajaxリクエストの場合はJSON形式でレスポンス
@@ -1953,32 +1993,43 @@ router.post('/pictures/:categoryId/album/delete/:albumId', async (req, res) => {
             });
         } else {
             // 通常のリクエストの場合はリダイレクト
-            // リダイレクト前にレスポンスヘッダーを設定して、ブラウザがキャッシュしないようにする
-            res.setHeader('Cache-Control', 'no-store');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
+            req.session.message = 'アルバムが正常に削除されました';
+            req.session.messageType = 'success';
             res.redirect(`/admin/pictures/${categoryId}/list`);
         }
     } catch (error) {
         if (connection) {
             await connection.rollback();
             // 外部キー制約チェックを元に戻す
-            await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+            try {
+                await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+                console.log('エラー発生後、外部キー制約チェックを有効化しました');
+            } catch (constraintError) {
+                console.error('外部キー制約の復元中にエラーが発生しました:', constraintError);
+            }
         }
-        console.error('Database error:', error);
+        
+        // エラーの詳細をログに記録
+        console.error('アルバム削除中にエラーが発生しました:', error);
         
         // リクエストがAjaxかどうかを判定
-        const isAjaxRequest = req.xhr || req.headers.accept.indexOf('json') > -1;
+        const isAjaxRequest = req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1);
+        
+        // セキュリティのため、クライアントに返すエラーメッセージは一般的なものにする
+        const clientErrorMessage = process.env.NODE_ENV === 'production' 
+            ? 'アルバムの削除中にエラーが発生しました' 
+            : `アルバムの削除中にエラーが発生しました: ${error.message}`;
         
         if (isAjaxRequest) {
             // Ajaxリクエストの場合はJSON形式でエラーレスポンス
             res.status(500).json({
                 success: false,
-                message: 'アルバムの削除中にエラーが発生しました: ' + error.message
+                message: clientErrorMessage
             });
         } else {
             // 通常のリクエストの場合はセッションにエラーメッセージを保存してリダイレクト
-            req.session.errorMessage = 'アルバムの削除中にエラーが発生しました: ' + error.message;
+            req.session.message = clientErrorMessage;
+            req.session.messageType = 'danger';
             res.redirect(`/admin/pictures/${req.params.categoryId}/list`);
         }
     } finally {
