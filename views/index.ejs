@@ -13,16 +13,16 @@
         </div>
         <ul class="headnav left">
             <li id="menu_0" class="current-menu">
-                <a href="#"><img src="img/menu.png" alt="菜单管理">菜单管理</a>
+                <a href="#"><img src="img/menu.png" alt="メニュー管理">メニュー管理</a>
             </li>
             <li id="menu_1">
-                <a href="#"><img src="img/module.png" alt="模块管理">模块管理</a>
+                <a href="#"><img src="img/module.png" alt="モジュール管理">モジュール管理</a>
             </li>
             <li id="menu_2">
-                <a href="#"><img src="img/setting.png" alt="系统设置">系统设置</a>
+                <a href="#"><img src="img/setting.png" alt="システム設定">システム設定</a>
             </li>
             <li id="menu_3">
-                <a href="#"><img src="img/expand.png" alt="扩展管理">扩展管理</a>
+                <a href="#"><img src="img/expand.png" alt="拡張管理">拡張管理</a>
             </li>
         </ul>
         <ul class="headlink right clearfix">
@@ -30,16 +30,16 @@
                 <a href="#"><img src="img/admin.png" alt="admin" class="nav-icon"> Hello,admin</a>
             </li>
             <li id="link_1">
-                <a href="#"><img src="img/hide.png" alt="隐藏菜单" class="nav-icon"><span>隐藏菜单</span></a>
+                <a href="#"><img src="img/hide.png" alt="メニューを隠す" class="nav-icon"><span>メニューを隠す</span></a>
             </li>   
             <li id="link_2">
-                <a href="#"><img src="img/home.png" alt="首页" class="nav-icon">首页</a>
+                <a href="#"><img src="img/home.png" alt="ホーム" class="nav-icon">ホーム</a>
             </li>
             <li id="link_3">
-                <a href="#"><img src="img/help.png" alt="帮助" class="nav-icon">帮助</a>
+                <a href="#"><img src="img/help.png" alt="ヘルプ" class="nav-icon">ヘルプ</a>
             </li>
             <li id="link_4">
-                <a href="#"><img src="img/exit.png" alt="退出" class="nav-icon">退出</a>
+                <a href="#"><img src="img/exit.png" alt="ログアウト" class="nav-icon">ログアウト</a>
             </li>
         </ul>
     </div>
@@ -47,17 +47,17 @@
     <div class="leftmenu">
         <div class="menu-section">
             <div class="menu-header">
-                栏目管理
+                カテゴリー管理
                 <span class="toggle-icon">▼</span>
             </div>
             <div class="menu-content">
-                <a href="/admin/category/list" target="main">栏目列表</a>
+                <a href="/admin/category/list" target="main">カテゴリー一覧</a>
             </div>
         </div>
 
         <div class="menu-section">
             <div class="menu-header">
-                内容管理
+                コンテンツ管理
                 <span class="toggle-icon">▼</span>
             </div>
             <div class="menu-content">
@@ -74,9 +74,10 @@
                             <div class="menu-item">
                                 <a href="/admin/content/<%= category.model_id %>/list?category=<%= category.id %>" 
                                    target="main" 
-                                   style="padding-left: <%= level * 20 %>px;"
+                                   data-level="<%= level %>"
                                    data-category-id="<%= category.id %>"
-                                   data-model-id="<%= category.model_id %>">
+                                   data-model-id="<%= category.model_id %>"
+                                   class="menu-link">
                                     <%= level > 0 ? '├--' : '' %>
                                     <%= category.name %>
                                 </a>
@@ -98,38 +99,38 @@
 
         <div class="menu-section">
             <div class="menu-header">
-                快捷面板
+                クイックパネル
                 <span class="toggle-icon">▼</span>
             </div>
             <div class="menu-content">
-                <a href="javascript:;">广告管理</a>
-                <a href="javascript:;">公司管理</a>
-                <a href="javascript:;">友情链接</a>
-                <a href="javascript:;">留言管理</a>
-                <a href="javascript:;">评论管理</a>
-                <a href="javascript:;">清楚系统缓存</a>
+                <a href="javascript:;">広告管理</a>
+                <a href="javascript:;">会社管理</a>
+                <a href="javascript:;">相互リンク</a>
+                <a href="javascript:;">メッセージ管理</a>
+                <a href="javascript:;">コメント管理</a>
+                <a href="javascript:;">システムキャッシュクリア</a>
             </div>
         </div>
         <div id="leftmenu_1" style="display: none;">
             <div class="menu-section">
                 <div class="menu-header">
-                    内置模块
+                    内蔵モジュール
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">自由模块管理</a>
-                    <a href="javascript:;">广告管理</a>
-                    <a href="javascript:;">专题管理</a>
-                    <a href="javascript:;">公告管理</a>
-                    <a href="javascript:;">友情链接</a>
-                    <a href="javascript:;">留言本管理</a>
-                    <a href="javascript:;">评论管理</a>
+                    <a href="javascript:;">フリーモジュール管理</a>
+                    <a href="javascript:;">広告管理</a>
+                    <a href="javascript:;">特集管理</a>
+                    <a href="javascript:;">お知らせ管理</a>
+                    <a href="javascript:;">相互リンク</a>
+                    <a href="javascript:;">メッセージ管理</a>
+                    <a href="javascript:;">コメント管理</a>
                 </div>
             </div>
             
             <div class="menu-section">
                 <div class="menu-header">
-                    其它模块
+                    その他のモジュール
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
@@ -140,51 +141,51 @@
         <div id="leftmenu_2" style="display: none;">
             <div class="menu-section">
                 <div class="menu-header">
-                    系统设置
+                    システム設定
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">网站设置</a>
-                    <a href="javascript:;">伪静态缓存设置</a>
-                    <a href="javascript:;">在线客服设置</a>
-                    <a href="javascript:;">清除系统缓存</a>
+                    <a href="javascript:;">サイト設定</a>
+                    <a href="javascript:;">静的キャッシュ設定</a>
+                    <a href="javascript:;">オンラインサポート設定</a>
+                    <a href="javascript:;">システムキャッシュクリア</a>
                 </div>
             </div>
 
             <div class="menu-section">
                 <div class="menu-header">
-                    静态缓存
+                    静的キャッシュ
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">一键更新全站</a>
-                    <a href="javascript:;">更新首页</a>
-                    <a href="javascript:;">更新栏目</a>
-                    <a href="javascript:;">更新文档</a>
-                    <a href="javascript:;">更新专题</a>
+                    <a href="javascript:;">サイト全体更新</a>
+                    <a href="javascript:;">トップページ更新</a>
+                    <a href="javascript:;">カテゴリー更新</a>
+                    <a href="javascript:;">ドキュメント更新</a>
+                    <a href="javascript:;">特集更新</a>
                 </div>
             </div>
 
             <div class="menu-section">
                 <div class="menu-header">
-                    会员管理
+                    会員管理
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">会员管理</a>
-                    <a href="javascript:;">会员组管理</a>
+                    <a href="javascript:;">会員管理</a>
+                    <a href="javascript:;">会員グループ管理</a>
                 </div>
             </div>
 
             <div class="menu-section">
                 <div class="menu-header">
-                    管理员管理
+                    管理者管理
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">系统用户管理</a>
-                    <a href="javascript:;">用户组管理</a>
-                    <a href="javascript:;">节点列表</a>
+                    <a href="javascript:;">システムユーザー管理</a>
+                    <a href="javascript:;">ユーザーグループ管理</a>
+                    <a href="javascript:;">ノードリスト</a>
                 </div>
             </div>
         </div>
@@ -192,28 +193,28 @@
         <div id="leftmenu_3" style="display: none;">
             <div class="menu-section">
                 <div class="menu-header">
-                    扩展管理
+                    拡張管理
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">模型管理</a>
-                    <a href="javascript:;">菜单管理</a>
-                    <a href="javascript:;">数据层管理</a>
-                    <a href="javascript:;">联动管理</a>
-                    <a href="javascript:;">区块管理</a>
-                    <a href="javascript:;">数据元管理</a>
-                    <a href="javascript:;">已传文件管理</a>
+                    <a href="javascript:;">モデル管理</a>
+                    <a href="javascript:;">メニュー管理</a>
+                    <a href="javascript:;">データレイヤー管理</a>
+                    <a href="javascript:;">連動管理</a>
+                    <a href="javascript:;">ブロック管理</a>
+                    <a href="javascript:;">データ要素管理</a>
+                    <a href="javascript:;">アップロードファイル管理</a>
                 </div>
             </div>
 
             <div class="menu-section">
                 <div class="menu-header">
-                    我的账户
+                    マイアカウント
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">修改我的信息</a>
-                    <a href="javascript:;">修改密码</a>
+                    <a href="javascript:;">個人情報変更</a>
+                    <a href="javascript:;">パスワード変更</a>
                 </div>
             </div>
         </div>
@@ -232,24 +233,34 @@
     <script type="text/javascript" src="js/script.js"></script>
     <script type="text/javascript">
         $(function(){
-            // 阻止事件冒泡并优化菜单点击处理
+            // 初期状態でbodyにshowleftmenuクラスを追加
+            $('body').addClass('showleftmenu');
+            
+            // イベントバブリングを防止しメニュークリック処理を最適化
             $('.menu-section .menu-header').off('click').on('click', function(e) {
-                e.stopPropagation(); // 阻止事件冒泡
+                e.stopPropagation(); // イベントバブリングを防止
                 const $content = $(this).next('.menu-content');
                 const $icon = $(this).find('.toggle-icon');
                 
-                // 切换当前菜单的展开/收起状态
+                // 現在のメニューの展開/折りたたみ状態を切り替え
                 $content.slideToggle('fast');
                 $icon.toggleClass('rotated');
             });
 
-            // 初始化菜单状态
+            // メニュー状態の初期化 - すべてのメニューを開いた状態にする
             $('.menu-section').each(function() {
                 const $content = $(this).find('.menu-content');
                 const $icon = $(this).find('.toggle-icon');
-                if ($content.is(':visible')) {
-                    $icon.addClass('rotated');
-                }
+                // すべてのメニューコンテンツを表示
+                $content.show();
+                // アイコンを回転状態に
+                $icon.addClass('rotated');
+            });
+
+            // メニューリンクのパディング設定
+            $('.menu-link').each(function() {
+                const level = parseInt($(this).data('level')) || 0;
+                $(this).css('padding-left', ((level * 20) + 25) + 'px');
             });
 
             // メニュー切り替えの処理
@@ -269,7 +280,7 @@
                 }
             });
 
-            // 隐藏菜单ボタンのクリック処理
+            // メニューを隠すボタンのクリック処理
             $("#link_1").click(function(e){
                 e.preventDefault();
                 $(".leftmenu").toggle();
@@ -279,12 +290,12 @@
                 var $span = $(this).find('span');
                 
                 if ($(".leftmenu").is(":visible")) {
-                    $img.attr('src', 'img/hide.png').attr('alt', '隐藏菜单');
-                    $span.text('隐藏菜单');
+                    $img.attr('src', 'img/hide.png').attr('alt', 'メニューを隠す');
+                    $span.text('メニューを隠す');
                     $('body').addClass('showleftmenu').removeClass('hideleftmenu');
                 } else {
-                    $img.attr('src', 'img/show_menu.png').attr('alt', '显示菜单');
-                    $span.text('显示菜单');
+                    $img.attr('src', 'img/show_menu.png').attr('alt', 'メニューを表示');
+                    $span.text('メニューを表示');
                     $('body').addClass('hideleftmenu').removeClass('showleftmenu');
                 }
             });

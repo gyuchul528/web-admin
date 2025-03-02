@@ -1741,7 +1741,7 @@ router.post('/pictures/:categoryId/album/add', async (req, res) => {
             `INSERT INTO albums 
             (category_id, name, description, subcategory_id, privacy_level, sort_order) 
             VALUES (?, ?, ?, ?, ?, ?)`,
-            [categoryId, name, description, subcategory_id === '' ? null : subcategory_id, privacy_level, sort_order]
+            [categoryId, name, description, subcategory_id, privacy_level, sort_order]
         );
 
         await connection.commit();
@@ -1918,13 +1918,6 @@ router.post('/pictures/:categoryId/album/delete/:albumId', async (req, res) => {
         await connection.query('SET FOREIGN_KEY_CHECKS = 0');
         console.log('外部キー制約チェックを無効化しました');
 
-        // アルバム内の写真を取得（ファイル削除のため）
-        const [photos] = await connection.query(
-            'SELECT filename FROM photos WHERE album_id = ?',
-            [albumId]
-        );
-        console.log(`関連写真を取得しました: ${photos.length}件`);
-
         try {
             // albumsテーブルのthumbnail_photo_idをNULLに設定
             await connection.query(
@@ -1932,6 +1925,13 @@ router.post('/pictures/:categoryId/album/delete/:albumId', async (req, res) => {
                 [albumId]
             );
             console.log('サムネイル参照をクリアしました');
+
+            // アルバム内の写真を取得（ファイル削除のため）
+            const [photos] = await connection.query(
+                'SELECT filename FROM photos WHERE album_id = ?',
+                [albumId]
+            );
+            console.log(`関連写真を取得しました: ${photos.length}件`);
 
             // photo_tag_relationsテーブルから関連レコードを削除
             await connection.query(
@@ -1959,83 +1959,31 @@ router.post('/pictures/:categoryId/album/delete/:albumId', async (req, res) => {
             console.log('外部キー制約チェックを有効化しました');
         }
 
-        // 写真ファイルを削除
-        const photoDeletePromises = photos.map(photo => {
-            return new Promise((resolve) => {
-                const filePath = path.join(__dirname, '../public/uploads/photos', photo.filename);
-                if (fs.existsSync(filePath)) {
-                    try {
-                        fs.unlinkSync(filePath);
-                        console.log(`写真ファイルを削除しました: ${photo.filename}`);
-                    } catch (fileError) {
-                        // ファイル削除エラーはログに記録するだけで処理は続行
-                        console.error(`ファイル削除エラー: ${photo.filename}`, fileError);
-                    }
-                }
-                resolve();
-            });
-        });
-
-        // すべてのファイル削除処理を並行して実行
-        await Promise.all(photoDeletePromises);
-
         await connection.commit();
         console.log('トランザクションをコミットしました');
         
-        // リクエストがAjaxかどうかを判定
-        const isAjaxRequest = req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1);
+        res.json({
+            success: true,
+            message: 'アルバムを削除しました'
+        });
         
-        if (isAjaxRequest) {
-            // Ajaxリクエストの場合はJSON形式でレスポンス
-            res.json({
-                success: true,
-                message: 'アルバムが正常に削除されました'
-            });
-        } else {
-            // 通常のリクエストの場合はリダイレクト
-            req.session.message = 'アルバムが正常に削除されました';
-            req.session.messageType = 'success';
-            res.redirect(`/admin/pictures/${categoryId}/list`);
-        }
-    } catch (error) {
+    } catch (err) {
+        console.error('エラー発生後、外部キー制約チェックを有効化しました');
         if (connection) {
-            await connection.rollback();
-            // 外部キー制約チェックを元に戻す
             try {
                 await connection.query('SET FOREIGN_KEY_CHECKS = 1');
-                console.log('エラー発生後、外部キー制約チェックを有効化しました');
-            } catch (constraintError) {
-                console.error('外部キー制約の復元中にエラーが発生しました:', constraintError);
+                await connection.rollback();
+            } catch (rollbackErr) {
+                console.error('ロールバックエラー:', rollbackErr);
             }
         }
-        
-        // エラーの詳細をログに記録
-        console.error('アルバム削除中にエラーが発生しました:', error);
-        
-        // リクエストがAjaxかどうかを判定
-        const isAjaxRequest = req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1);
-        
-        // セキュリティのため、クライアントに返すエラーメッセージは一般的なものにする
-        const clientErrorMessage = process.env.NODE_ENV === 'production' 
-            ? 'アルバムの削除中にエラーが発生しました' 
-            : `アルバムの削除中にエラーが発生しました: ${error.message}`;
-        
-        if (isAjaxRequest) {
-            // Ajaxリクエストの場合はJSON形式でエラーレスポンス
-            res.status(500).json({
-                success: false,
-                message: clientErrorMessage
-            });
-        } else {
-            // 通常のリクエストの場合はセッションにエラーメッセージを保存してリダイレクト
-            req.session.message = clientErrorMessage;
-            req.session.messageType = 'danger';
-            res.redirect(`/admin/pictures/${req.params.categoryId}/list`);
-        }
+        console.error('アルバム削除中にエラーが発生しました:', err);
+        res.status(500).json({
+            success: false,
+            message: 'アルバム削除中にエラーが発生しました: ' + err.message
+        });
     } finally {
-        if (connection) {
-            connection.release();
-        }
+        if (connection) connection.release();
     }
 });
 
