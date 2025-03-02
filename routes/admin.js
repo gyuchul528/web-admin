@@ -1741,7 +1741,7 @@ router.post('/pictures/:categoryId/album/add', async (req, res) => {
             `INSERT INTO albums 
             (category_id, name, description, subcategory_id, privacy_level, sort_order) 
             VALUES (?, ?, ?, ?, ?, ?)`,
-            [categoryId, name, description, subcategory_id, privacy_level, sort_order]
+            [categoryId, name, description, subcategory_id === '' ? null : subcategory_id, privacy_level, sort_order]
         );
 
         await connection.commit();
@@ -1918,6 +1918,13 @@ router.post('/pictures/:categoryId/album/delete/:albumId', async (req, res) => {
         await connection.query('SET FOREIGN_KEY_CHECKS = 0');
         console.log('外部キー制約チェックを無効化しました');
 
+        // アルバム内の写真を取得（ファイル削除のため）
+        const [photos] = await connection.query(
+            'SELECT filename FROM photos WHERE album_id = ?',
+            [albumId]
+        );
+        console.log(`関連写真を取得しました: ${photos.length}件`);
+
         try {
             // albumsテーブルのthumbnail_photo_idをNULLに設定
             await connection.query(
@@ -1925,13 +1932,6 @@ router.post('/pictures/:categoryId/album/delete/:albumId', async (req, res) => {
                 [albumId]
             );
             console.log('サムネイル参照をクリアしました');
-
-            // アルバム内の写真を取得（ファイル削除のため）
-            const [photos] = await connection.query(
-                'SELECT filename FROM photos WHERE album_id = ?',
-                [albumId]
-            );
-            console.log(`関連写真を取得しました: ${photos.length}件`);
 
             // photo_tag_relationsテーブルから関連レコードを削除
             await connection.query(
