@@ -4,144 +4,118 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>カテゴリー一覧</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            padding: 8px;
-            text-align: left;
-            border: 1px solid #ddd;
-        }
-        th {
-            background-color: #f5f5f5;
-        }
-        .operation-buttons {
-            margin-bottom: 20px;
-        }
-        .operation-buttons button {
-            padding: 5px 15px;
-            margin-right: 10px;
-            cursor: pointer;
-        }
-        .checkbox-column {
-            width: 40px;
-            text-align: center;
-        }
-        .number-column {
-            width: 50px;
-        }
-        .operation-column {
-            width: 300px;
+        .indent-text {
+            margin-left: 20px;
         }
         .order-input {
-            width: 50px;
+            width: 30px;
         }
     </style>
 </head>
 <body>
-    <div class="operation-buttons">
-        <button onclick="addCategory()">カテゴリー追加</button>
-        <button onclick="updateOrder()">順序更新</button>
+    <div class="container mt-4">
+        <div class="row mb-3">
+            <div class="col">
+                <button class="btn btn-primary me-2" onclick="addCategory()">カテゴリー追加</button>
+                <button class="btn btn-secondary" onclick="updateOrder()">順序更新</button>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center" style="width: 40px;"><input type="checkbox" id="selectAll" class="form-check-input"></th>
+                                <th style="width: 60px;">番号</th>
+                                <th>名称</th>
+                                <th>所属モデル</th>
+                                <th>表示</th>
+                                <th style="width: 80px;">順序</th>
+                                <th style="width: 300px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% 
+                            // 辅助函数：获取缩进空格
+                            function getIndent(level) {
+                                return '　'.repeat(level);
+                            }
+
+                            // 辅助函数：递归渲染分类
+                            function renderCategories(categories, parentId = 0, level = 0) {
+                                categories.filter(cat => cat.parent_id == parentId).forEach(function(category) { 
+                            %>
+                                <tr>
+                                    <td class="text-center">
+                                        <input type="checkbox" name="ids" value="<%= category.id %>" class="form-check-input">
+                                    </td>
+                                    <td><%= category.id %></td>
+                                    <td>
+                                        <%= getIndent(level) %>
+                                        <%= level > 0 ? '|--' : '' %>
+                                        <%= category.name %>
+                                    </td>
+                                    <td>
+                                        <% 
+                                        let modelName;
+                                        switch(parseInt(category.model_id)) {
+                                            case 1:
+                                                modelName = 'ページモデル';
+                                                break;
+                                            case 2:
+                                                modelName = '記事モデル';
+                                                break;
+                                            case 3:
+                                                modelName = '製品モデル';
+                                                break;
+                                            case 4:
+                                                modelName = '写真モデル';
+                                                break;
+                                            case 5:
+                                                modelName = '外部リンク';
+                                                break;
+                                            default:
+                                                modelName = '不明';
+                                        }
+                                        %>
+                                        <%= modelName %>
+                                    </td>
+                                    <td><%= category.parent_id === 1 ? 'いいえ' : 'はい' %></td>
+                                    <td>
+                                        <input type="text" class="form-control order-input" value="<%= category.sort_order %>" 
+                                               data-id="<%= category.id %>">
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="/admin/category/addChild/<%= category.id %>" class="btn btn-outline-primary">サブカテゴリー追加</a>
+                                            <a href="/admin/content/<%= category.model_id %>/list?category=<%= category.id %>" class="btn btn-outline-info">一覧</a>
+                                            <a href="/admin/category/edit/<%= category.id %>" class="btn btn-outline-secondary">編集</a>
+                                            <button type="button" class="btn btn-outline-danger" onclick="deleteCategory('<%= category.id %>')">削除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <%
+                                    // 递归渲染子分类
+                                    renderCategories(categories, category.id, level + 1);
+                                });
+                            }
+                            %>
+                            
+                            <% renderCategories(categories); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th class="checkbox-column"><input type="checkbox" id="selectAll"></th>
-                <th class="number-column">番号</th>
-                <th>名称</th>
-                <th>所属モデル</th>
-                <th>表示</th>
-                <th>順序</th>
-                <th class="operation-column">操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% 
-            // 辅助函数：获取缩进空格
-            function getIndent(level) {
-                return '　'.repeat(level);
-            }
-
-            // 辅助函数：递归渲染分类
-            function renderCategories(categories, parentId = 0, level = 0) {
-                categories.filter(cat => cat.parent_id == parentId).forEach(function(category) { 
-            %>
-                <tr>
-                    <td class="checkbox-column">
-                        <input type="checkbox" name="ids" value="<%= category.id %>">
-                    </td>
-                    <td class="number-column"><%= category.id %></td>
-                    <td>
-                        <%= getIndent(level) %>
-                        <%= level > 0 ? '|--' : '' %>
-                        <%= category.name %>
-                    </td>
-                    <td>
-                        <% 
-                        let modelName;
-                        switch(parseInt(category.model_id)) {
-                            case 1:
-                                modelName = 'ページモデル';
-                                break;
-                            case 2:
-                                modelName = '記事モデル';
-                                break;
-                            case 3:
-                                modelName = '製品モデル';
-                                break;
-                            case 4:
-                                modelName = '写真モデル';
-                                break;
-                            case 5:
-                                modelName = '外部リンク';
-                                break;
-                            default:
-                                modelName = '不明';
-                        }
-                        %>
-                        <%= modelName %>
-                    </td>
-                    <td><%= category.parent_id === 1 ? 'いいえ' : 'はい' %></td>
-                    <td>
-                        <input type="text" class="order-input" value="<%= category.sort_order %>" 
-                               data-id="<%= category.id %>">
-                    </td>
-                    <td class="operation-column">
-                        <a href="/admin/category/addChild/<%= category.id %>">サブカテゴリー追加</a>
-                        <% if (category.model_id === 1) { %>
-                            <a href="/admin/content/<%= category.model_id %>/list?category=<%= category.id %>">一覧</a>
-                        <% } else if (category.model_id === 2) { %>
-                            <a href="/admin/content/<%= category.model_id %>/list?category=<%= category.id %>">一覧</a>
-                        <% } else if (category.model_id === 3) { %>
-                            <a href="/admin/content/<%= category.model_id %>/list?category=<%= category.id %>">一覧</a>
-                        <% } else if (category.model_id === 4) { %>
-                            <a href="/admin/content/<%= category.model_id %>/list?category=<%= category.id %>">一覧</a>
-                        <% } else if (category.model_id === 5) { %>
-                            <a href="/admin/content/<%= category.model_id %>/list?category=<%= category.id %>">一覧</a>
-                        <% } %>
-                        <a href="/admin/category/edit/<%= category.id %>">編集</a>
-                        <a href="javascript:void(0)" onclick="deleteCategory('<%= category.id %>')">削除</a>
-                    </td>
-                </tr>
-            <%
-                    // 递归渲染子分类
-                    renderCategories(categories, category.id, level + 1);
-                });
-            }
-            %>
-            
-            <% renderCategories(categories); %>
-        </tbody>
-    </table>
-
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // 全選功能
         document.getElementById('selectAll').addEventListener('change', function() {

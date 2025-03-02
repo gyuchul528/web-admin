@@ -4,78 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= isChild ? 'サブカテゴリー追加' : 'カテゴリー追加' %></title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            max-width: 800px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        input[type="text"],
-        select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .parent-info {
-            background-color: #f5f5f5;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-    </style>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <h1><%= isChild ? 'サブカテゴリー追加' : 'カテゴリー追加' %></h1>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-3">
+                <!-- 左側のサイドバー -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><%= isChild ? 'サブカテゴリー追加' : 'カテゴリー追加' %></h5>
+                    </div>
+                    <div class="card-body">
+                        <% if (isChild && parentCategory) { %>
+                        <div class="alert alert-info mb-3">
+                            <h6 class="alert-heading">親カテゴリー情報：</h6>
+                            <p class="mb-0">名称：<%= parentCategory.name %></p>
+                        </div>
+                        <% } %>
 
-    <% if (isChild && parentCategory) { %>
-    <div class="parent-info">
-        <h3>親カテゴリー情報：</h3>
-        <p>名称：<%= parentCategory.name %></p>
+                        <form id="categoryForm">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">カテゴリー名：</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="model_id" class="form-label">所属モデル：</label>
+                                <select class="form-select" id="model_id" name="model_id" required>
+                                    <% models.forEach(function(model) { %>
+                                        <option value="<%= model.id %>"><%= model.name %></option>
+                                    <% }); %>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="sort_order" class="form-label">表示順序：</label>
+                                <input type="number" class="form-control" id="sort_order" name="sort_order" value="0">
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">保存</button>
+                                <a href="/admin/category/list" class="btn btn-secondary">キャンセル</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-9">
+                <!-- 右側のメインコンテンツエリア（必要に応じて追加コンテンツを配置） -->
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">カテゴリー管理</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>左側のフォームからカテゴリー情報を入力して保存してください。</p>
+                        <p>カテゴリーを追加すると、メニューに新しい項目が表示されます。</p>
+                        <div class="alert alert-warning">
+                            <strong>注意：</strong> カテゴリーを追加した後は、適切な権限設定を行ってください。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <% } %>
 
-    <form id="categoryForm">
-        <div class="form-group">
-            <label for="name">カテゴリー名：</label>
-            <input type="text" id="name" name="name" required>
-        </div>
-
-        <div class="form-group">
-            <label for="model_id">所属モデル：</label>
-            <select id="model_id" name="model_id" required>
-                <% models.forEach(function(model) { %>
-                    <option value="<%= model.id %>"><%= model.name %></option>
-                <% }); %>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label for="sort_order">表示順序：</label>
-            <input type="number" id="sort_order" name="sort_order" value="0">
-        </div>
-
-        <button type="submit">保存</button>
-    </form>
-
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.getElementById('categoryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
