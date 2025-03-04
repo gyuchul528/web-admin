@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .status-表示中 {
+            color: #198754;
+            font-weight: 500;
+        }
+        .status-非表示 {
+            color: #6c757d;
+            font-weight: 500;
+        }
+        .table-responsive {
+            margin-top: 2rem;
+        }
+        .btn-delete {
+            color: #dc3545;
+            border: none;
+            background: none;
+            padding: 0;
+        }
+        .btn-delete:hover {
+            color: #bb2d3b;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h2 mb-0"><%= title %></h1>
+                </div>
+                
+                <% if (typeof error !== 'undefined' && error) { %>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <%= error %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <% } %>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="h5 mb-0">新規広告追加</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="addAdForm" action="/admin/content/add_ad" method="POST">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="name" class="form-label">広告名</label>
+                                    <input type="text" class="form-control" id="name" name="name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="status" class="form-label">表示状況</label>
+                                    <select class="form-select" id="status" name="status" required>
+                                        <% statusOptions.forEach(status => { %>
+                                            <option value="<%= status %>"><%= status %></option>
+                                        <% }); %>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-plus-circle me-1"></i>追加
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h2 class="h5 mb-0">広告一覧</h2>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>広告名</th>
+                                        <th>表示状況</th>
+                                        <th class="text-end">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% if (typeof ads !== 'undefined' && ads.length > 0) { %>
+                                        <% ads.forEach(ad => { %>
+                                            <tr>
+                                                <td><%= ad.name %></td>
+                                                <td>
+                                                    <span class="status-<%= ad.status %>">
+                                                        <i class="bi bi-<%= ad.status === '表示中' ? 'eye' : 'eye-slash' %> me-1"></i>
+                                                        <%= ad.status %>
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary edit-ad-btn" 
+                                                                data-ad-id="<%= ad.id %>">
+                                                            <i class="bi bi-pencil"></i>
+                                                            <span class="d-none d-md-inline ms-1">編集</span>
+                                                        </button>
+                                                        <form action="/admin/content/delete_ad/<%= ad.id %>" method="POST" class="d-inline">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger ms-1" 
+                                                                    onclick="return confirm('本当に削除しますか？')">
+                                                                <i class="bi bi-trash"></i>
+                                                                <span class="d-none d-md-inline ms-1">削除</span>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    <% } else { %>
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4 text-muted">
+                                                <i class="bi bi-inbox-fill d-block mb-2" style="font-size: 2rem;"></i>
+                                                広告がありません
+                                            </td>
+                                        </tr>
+                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 編集モーダル -->
+    <div class="modal fade" id="editAdModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">広告を編集</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editAdForm">
+                        <input type="hidden" id="editAdId" name="id">
+                        <div class="mb-3">
+                            <label for="editName" class="form-label">広告名</label>
+                            <input type="text" class="form-control" id="editName" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editStatus" class="form-label">表示状況</label>
+                            <select class="form-select" id="editStatus" name="status" required>
+                                <% statusOptions.forEach(status => { %>
+                                    <option value="<%= status %>"><%= status %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" id="saveEditButton">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // トースト表示用の関数
+        function showToast(message, type = 'success') {
+            const toast = new bootstrap.Toast(document.createElement('div'));
+            toast._element.className = `toast align-items-center text-white bg-${type} border-0 position-fixed bottom-0 end-0 m-3`;
+            toast._element.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            document.body.appendChild(toast._element);
+            toast.show();
+            
+            // トーストが消えた後に要素を削除
+            setTimeout(() => {
+                document.body.removeChild(toast._element);
+            }, 3000);
+        }
+
+        // 広告追加フォームの処理
+        document.getElementById('addAdForm').onsubmit = async (e) => {
+            e.preventDefault();
+            try {
+                const formData = new FormData(e.target);
+                const response = await fetch(e.target.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(Object.fromEntries(formData))
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message);
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showToast(result.message, 'danger');
+                }
+            } catch (error) {
+                showToast('エラーが発生しました: ' + error.message, 'danger');
+            }
+        };
+
+        // 広告削除フォームの処理
+        document.querySelectorAll('form[action*="delete_ad"]').forEach(form => {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                
+                if (!confirm('本当に削除しますか？')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(e.target.action, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showToast(result.message);
+                        // 削除成功時は該当の行を非表示にしてからページをリロード
+                        const row = e.target.closest('tr');
+                        if (row) {
+                            row.style.transition = 'opacity 0.3s';
+                            row.style.opacity = '0';
+                        }
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        showToast(result.message, 'danger');
+                    }
+                } catch (error) {
+                    showToast('エラーが発生しました: ' + error.message, 'danger');
+                }
+            };
+        });
+
+        // 編集モーダルの設定
+        const editModal = new bootstrap.Modal(document.getElementById('editAdModal'));
+        const editForm = document.getElementById('editAdForm');
+        const editAdId = document.getElementById('editAdId');
+        const editName = document.getElementById('editName');
+        const editStatus = document.getElementById('editStatus');
+
+        // 編集ボタンのクリックハンドラ
+        document.querySelectorAll('.edit-ad-btn').forEach(button => {
+            button.onclick = async () => {
+                const adId = button.dataset.adId;
+                try {
+                    const response = await fetch(`/admin/content/edit_ad/${adId}`);
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        editAdId.value = result.ad.id;
+                        editName.value = result.ad.name;
+                        editStatus.value = result.ad.status;
+                        editModal.show();
+                    } else {
+                        showToast(result.message, 'danger');
+                    }
+                } catch (error) {
+                    showToast('エラーが発生しました: ' + error.message, 'danger');
+                }
+            };
+        });
+
+        // 保存ボタンのクリックハンドラ
+        document.getElementById('saveEditButton').onclick = async () => {
+            try {
+                const formData = new FormData(editForm);
+                const response = await fetch(`/admin/content/update_ad/${editAdId.value}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(Object.fromEntries(formData))
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(result.message);
+                    editModal.hide();
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showToast(result.message, 'danger');
+                }
+            } catch (error) {
+                showToast('エラーが発生しました: ' + error.message, 'danger');
+            }
+        };
+    </script>
+</body>
+</html> 

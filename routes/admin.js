@@ -2522,4 +2522,169 @@ router.post('/pictures/subcategories/:subcategoryId/delete', async (req, res) =>
     }
 });
 
+// 広告管理ページのルート
+router.get('/content/ad_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        
+        // 広告データを取得（statusでソート：表示中が先に来るように）
+        const [ads] = await connection.query(
+            'SELECT id, name, status FROM ads ORDER BY FIELD(status, "表示中", "非表示"), id DESC'
+        );
+        
+        // データをテンプレートへ渡して表示
+        res.render('admin/content/ad_management', { 
+            ads: ads,
+            title: '広告管理',
+            statusOptions: ['表示中', '非表示'] // ステータスオプションをテンプレートに渡す
+        });
+        
+    } catch (error) {
+        console.error('データベースエラー:', error);
+        res.render('admin/content/ad_management', {
+            ads: [],
+            title: '広告管理',
+            error: 'データの取得中にエラーが発生しました: ' + error.message,
+            statusOptions: ['表示中', '非表示']
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 広告追加のルート
+router.post('/content/add_ad', async (req, res) => {
+    let connection;
+    try {
+        const { name, status } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 広告を追加
+        const [result] = await connection.query(
+            'INSERT INTO ads (name, status) VALUES (?, ?)',
+            [name, status]
+        );
+
+        await connection.commit();
+        
+        res.json({
+            success: true,
+            message: '広告を追加しました',
+            adId: result.insertId
+        });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('データベースエラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'エラーが発生しました: ' + error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 広告削除のルート
+router.post('/content/delete_ad/:id', async (req, res) => {
+    let connection;
+    try {
+        const adId = req.params.id;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 広告を削除
+        await connection.query('DELETE FROM ads WHERE id = ?', [adId]);
+
+        await connection.commit();
+        
+        res.json({
+            success: true,
+            message: '広告を削除しました'
+        });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('データベースエラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'エラーが発生しました: ' + error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 広告編集のルート
+router.get('/content/edit_ad/:id', async (req, res) => {
+    let connection;
+    try {
+        const adId = req.params.id;
+        connection = await pool.getConnection();
+        
+        // 広告データを取得
+        const [ads] = await connection.query('SELECT * FROM ads WHERE id = ?', [adId]);
+        
+        if (ads.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: '広告が見つかりません'
+            });
+        }
+
+        res.json({
+            success: true,
+            ad: ads[0]
+        });
+
+    } catch (error) {
+        console.error('データベースエラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'エラーが発生しました: ' + error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 広告更新のルート
+router.post('/content/update_ad/:id', async (req, res) => {
+    let connection;
+    try {
+        const adId = req.params.id;
+        const { name, status } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 広告を更新
+        await connection.query(
+            'UPDATE ads SET name = ?, status = ? WHERE id = ?',
+            [name, status, adId]
+        );
+
+        await connection.commit();
+        
+        res.json({
+            success: true,
+            message: '広告を更新しました'
+        });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('データベースエラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'エラーが発生しました: ' + error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 module.exports = router; 

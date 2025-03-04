@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>広告編集</title>
+    <link rel="stylesheet" type="text/css" href="/css/style.css">
+</head>
+<body>
+    <h1>広告編集</h1>
+    <form action="/admin/content/edit_ad/<%= ad.id %>" method="POST">
+        <label for="adName">広告名:</label>
+        <input type="text" id="adName" name="adName" value="<%= ad.name %>" required>
+        
+        <label for="status">表示状況:</label>
+        <select id="status" name="status">
+            <option value="表示中" <%= ad.status === '表示中' ? 'selected' : '' %>>表示中</option>
+            <option value="非表示" <%= ad.status === '非表示' ? 'selected' : '' %>>非表示</option>
+        </select>
+        
+        <button type="submit">更新</button>
+    </form>
+</body>
+</html> 
