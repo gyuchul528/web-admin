@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .container-fluid {
+            padding: 1.5rem;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: #1696d7;
+            border-bottom: none;
+            color: white;
+        }
+
+        .comment-text {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="h3 mb-0">コメント管理</h1>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>投稿者</th>
+                                <th>コメント</th>
+                                <th>コンテンツ</th>
+                                <th>日時</th>
+                                <th>状態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% comments.forEach(function(comment) { %>
+                            <tr>
+                                <td><%= comment.id %></td>
+                                <td><%= comment.author_name %></td>
+                                <td>
+                                    <div class="comment-text" title="<%= comment.comment %>">
+                                        <%= comment.comment.substring(0, 50) %>...
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">
+                                        <%= comment.content_type %> #<%= comment.content_id %>
+                                    </span>
+                                </td>
+                                <td><%= comment.created_at %></td>
+                                <td>
+                                    <span class="badge <%= comment.status === 1 ? 'bg-success' : 'bg-warning' %>">
+                                        <%= comment.status === 1 ? '承認済' : '未承認' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary view-btn" 
+                                                data-id="<%= comment.id %>">表示</button>
+                                        <button class="btn btn-outline-success approve-btn" 
+                                                data-id="<%= comment.id %>"
+                                                <%= comment.status === 1 ? 'disabled' : '' %>>
+                                            承認
+                                        </button>
+                                        <button class="btn btn-outline-danger delete-btn" 
+                                                data-id="<%= comment.id %>">削除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- コメント表示モーダル -->
+    <div class="modal fade" id="viewCommentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">コメント詳細</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="commentDetails" class="p-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // トースト通知を表示する関数
+        function showToast(message, isError = false) {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            
+            const toastHtml = `
+                <div class="toast align-items-center text-white ${isError ? 'bg-danger' : 'bg-success'}" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.innerHTML = toastHtml;
+            document.body.appendChild(toastContainer);
+            
+            const toast = new bootstrap.Toast(toastContainer.querySelector('.toast'));
+            toast.show();
+            
+            setTimeout(() => {
+                document.body.removeChild(toastContainer);
+            }, 5000);
+        }
+
+        // コメント表示
+        document.querySelectorAll('.view-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                const id = this.dataset.id;
+                try {
+                    const response = await fetch(`/admin/content/comment/${id}`);
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        const comment = result.comment;
+                        document.getElementById('commentDetails').innerHTML = `
+                            <div class="mb-3">
+                                <strong>投稿者:</strong> ${comment.author_name}
+                            </div>
+                            <div class="mb-3">
+                                <strong>コメント:</strong><br>
+                                ${comment.comment}
+                            </div>
+                            <div class="mb-3">
+                                <strong>投稿日時:</strong> ${comment.created_at}
+                            </div>
+                        `;
+                        
+                        const modal = new bootstrap.Modal(document.getElementById('viewCommentModal'));
+                        modal.show();
+                    } else {
+                        showToast(result.message || 'コメントの取得に失敗しました', true);
+                    }
+                } catch (error) {
+                    showToast('エラーが発生しました', true);
+                }
+            });
+        });
+
+        // コメント承認
+        document.querySelectorAll('.approve-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                const id = this.dataset.id;
+                try {
+                    const response = await fetch(`/admin/content/approve_comment/${id}`, {
+                        method: 'POST'
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('コメントを承認しました');
+                        this.disabled = true;
+                        this.closest('tr').querySelector('.badge').className = 'badge bg-success';
+                        this.closest('tr').querySelector('.badge').textContent = '承認済';
+                    } else {
+                        showToast(result.message || '承認に失敗しました', true);
+                    }
+                } catch (error) {
+                    showToast('エラーが発生しました', true);
+                }
+            });
+        });
+
+        // コメント削除
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                if (!confirm('このコメントを削除してもよろしいですか？')) return;
+                
+                const id = this.dataset.id;
+                try {
+                    const response = await fetch(`/admin/content/delete_comment/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('コメントを削除しました');
+                        this.closest('tr').remove();
+                    } else {
+                        showToast(result.message || '削除に失敗しました', true);
+                    }
+                } catch (error) {
+                    showToast('エラーが発生しました', true);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

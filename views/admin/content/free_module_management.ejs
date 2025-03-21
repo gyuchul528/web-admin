@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Quill.js CSS -->
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .container-fluid {
+            padding: 1.5rem;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: #1696d7;
+            border-bottom: none;
+            color: white;
+        }
+
+        .ql-editor {
+            min-height: 300px;
+            background-color: white;
+        }
+
+        .editor-container {
+            margin-bottom: 1.5rem;
+            background-color: white;
+            border-radius: 0.375rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">フリーモジュール管理</h1>
+                <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addModuleModal">
+                    新規モジュールを追加
+                </button>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>タイトル</th>
+                                <th>位置</th>
+                                <th>表示順</th>
+                                <th>状態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% modules.forEach(function(module) { %>
+                            <tr>
+                                <td><%= module.id %></td>
+                                <td><%= module.title %></td>
+                                <td>
+                                    <span class="badge bg-info">
+                                        <%= module.position %>
+                                    </span>
+                                </td>
+                                <td><%= module.sort_order %></td>
+                                <td>
+                                    <span class="badge <%= module.status === 1 ? 'bg-success' : 'bg-secondary' %>">
+                                        <%= module.status === 1 ? '表示' : '非表示' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-sm btn-outline-primary edit-button"
+                                                data-id="<%= module.id %>"
+                                                data-title="<%= module.title %>"
+                                                data-content="<%= module.content %>"
+                                                data-position="<%= module.position %>"
+                                                data-sort-order="<%= module.sort_order %>"
+                                                data-status="<%= module.status %>">
+                                            編集
+                                        </button>
+                                        <button class="btn btn-outline-danger delete-btn" data-id="<%= module.id %>">
+                                            削除
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新規追加モーダル -->
+    <div class="modal fade" id="addModuleModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新規モジュール追加</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addModuleForm">
+                        <div class="mb-3">
+                            <label class="form-label">タイトル</label>
+                            <input type="text" class="form-control" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">内容</label>
+                            <div class="editor-container">
+                                <div id="editor"></div>
+                                <input type="hidden" name="content">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">表示位置</label>
+                                <select class="form-select" name="position">
+                                    <option value="header">ヘッダー</option>
+                                    <option value="sidebar">サイドバー</option>
+                                    <option value="footer">フッター</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">表示順</label>
+                                <input type="number" class="form-control" name="sort_order" value="0">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" id="saveModule">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 編集モーダル -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">フリーモジュール編集</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <input type="hidden" id="editId">
+                        <div class="mb-3">
+                            <label for="editTitle" class="form-label">タイトル <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editContent" class="form-label">内容 <span class="text-danger">*</span></label>
+                            <div class="editor-container">
+                                <div id="editEditor"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">表示位置</label>
+                                <select class="form-select" id="editPosition">
+                                    <option value="header">ヘッダー</option>
+                                    <option value="sidebar">サイドバー</option>
+                                    <option value="footer">フッター</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">表示順</label>
+                                <input type="number" class="form-control" id="editSortOrder" value="0">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">状態</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="editStatus" id="editStatusPublic" value="1">
+                                    <label class="form-check-label" for="editStatusPublic">表示</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="editStatus" id="editStatusPrivate" value="0">
+                                    <label class="form-check-label" for="editStatusPrivate">非表示</label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" onclick="updateFreeModule()">更新</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Quill.js -->
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+
+    <script>
+        // Quillエディタの初期化
+        const quill = new Quill('#editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['blockquote', 'code-block'],
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'align': [] }],
+                    ['clean'],
+                    ['link', 'image']
+                ]
+            },
+            placeholder: 'モジュールの内容を入力してください...'
+        });
+
+        // トースト通知を表示する関数
+        function showToast(message, isError = false) {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            
+            const toastHtml = `
+                <div class="toast align-items-center text-white ${isError ? 'bg-danger' : 'bg-success'}" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.innerHTML = toastHtml;
+            document.body.appendChild(toastContainer);
+            
+            const toast = new bootstrap.Toast(toastContainer.querySelector('.toast'));
+            toast.show();
+            
+            setTimeout(() => {
+                document.body.removeChild(toastContainer);
+            }, 5000);
+        }
+
+        // モジュールを追加
+        document.getElementById('saveModule').addEventListener('click', async function() {
+            const formData = new FormData(document.getElementById('addModuleForm'));
+            formData.set('content', quill.root.innerHTML);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('/admin/content/add_module', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showToast('モジュールを追加しました');
+                    location.reload();
+                } else {
+                    showToast(result.message || 'エラーが発生しました', true);
+                }
+            } catch (error) {
+                showToast('エラーが発生しました', true);
+            }
+        });
+
+        // モジュールを削除
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                if (!confirm('本当に削除しますか？')) return;
+                
+                const id = this.dataset.id;
+                try {
+                    const response = await fetch(`/admin/content/delete_module/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('モジュールを削除しました');
+                        this.closest('tr').remove();
+                    } else {
+                        showToast(result.message || 'エラーが発生しました', true);
+                    }
+                } catch (error) {
+                    showToast('エラーが発生しました', true);
+                }
+            });
+        });
+
+        // 編集用Quillエディタの初期化
+        const editQuill = new Quill('#editEditor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['blockquote', 'code-block'],
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'align': [] }],
+                    ['clean'],
+                    ['link', 'image']
+                ]
+            }
+        });
+
+        // 編集モーダルを表示する関数を修正
+        function showEditModal(id, title, content, position, sortOrder, status) {
+            console.log('Editing module:', { id, title, content, position, sortOrder, status }); // デバッグ用
+
+            document.getElementById('editId').value = id;
+            document.getElementById('editTitle').value = title || '';
+            editQuill.root.innerHTML = content || '';
+            document.getElementById('editPosition').value = position || 'header';
+            document.getElementById('editSortOrder').value = sortOrder || 0;
+            
+            if (parseInt(status) === 1) {
+                document.getElementById('editStatusPublic').checked = true;
+            } else {
+                document.getElementById('editStatusPrivate').checked = true;
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('editModal'));
+            modal.show();
+        }
+
+        // フリーモジュールを更新
+        async function updateFreeModule() {
+            const id = document.getElementById('editId').value;
+            const title = document.getElementById('editTitle').value;
+            const content = editQuill.root.innerHTML;
+            const position = document.getElementById('editPosition').value;
+            const sortOrder = document.getElementById('editSortOrder').value;
+            const status = document.querySelector('input[name="editStatus"]:checked').value;
+
+            if (!title || !content) {
+                showToast('タイトルと内容は必須項目です', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/content/free_module_management/edit/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title,
+                        content,
+                        position,
+                        sort_order: parseInt(sortOrder),
+                        status: parseInt(status)
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('フリーモジュールを更新しました');
+                    bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+                    location.reload();
+                } else {
+                    showToast(result.message || 'フリーモジュールの更新に失敗しました', true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('フリーモジュールの更新に失敗しました', true);
+            }
+        }
+
+        // 編集ボタンのイベントリスナーを修正
+        document.querySelectorAll('.edit-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const id = button.dataset.id;
+                const title = button.dataset.title;
+                const content = button.dataset.content;
+                const position = button.dataset.position;
+                const sortOrder = button.dataset.sortOrder;
+                const status = button.dataset.status;
+
+                console.log('Button data:', button.dataset); // デバッグ用
+                showEditModal(id, title, content, position, sortOrder, parseInt(status));
+            });
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= title %></title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .model-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+        }
+        .preview-icon {
+            max-width: 100px;
+            max-height: 100px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h2>モデル管理</h2>
+        
+        <!-- 新規追加ボタン -->
+        <button type="button" class="btn btn-primary mb-3" data-toggle="modal" data-target="#addModelModal">
+            新規モデルを追加
+        </button>
+
+        <!-- モデル一覧テーブル -->
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>アイコン</th>
+                    <th>モデル名</th>
+                    <th>識別子</th>
+                    <th>説明</th>
+                    <th>表示順</th>
+                    <th>状態</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% models.forEach(function(model) { %>
+                <tr>
+                    <td><%= model.id %></td>
+                    <td>
+                        <% if (model.icon_path) { %>
+                            <img src="<%= model.icon_path %>" alt="モデルアイコン" class="model-icon">
+                        <% } %>
+                    </td>
+                    <td><%= model.name %></td>
+                    <td><%= model.identifier %></td>
+                    <td><%= model.description %></td>
+                    <td><%= model.sort_order %></td>
+                    <td><%= model.status === 1 ? '有効' : '無効' %></td>
+                    <td>
+                        <button class="btn btn-sm btn-info edit-btn" data-id="<%= model.id %>">編集</button>
+                        <button class="btn btn-sm btn-warning field-btn" data-id="<%= model.id %>">フィールド設定</button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-id="<%= model.id %>">削除</button>
+                    </td>
+                </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 新規追加モーダル -->
+    <div class="modal fade" id="addModelModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新規モデル追加</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="addModelForm">
+                        <div class="form-group">
+                            <label>モデル名</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>識別子</label>
+                            <input type="text" class="form-control" name="identifier" required pattern="[a-zA-Z0-9_]+">
+                            <small class="form-text text-muted">英数字とアンダースコアのみ使用可能</small>
+                        </div>
+                        <div class="form-group">
+                            <label>説明</label>
+                            <textarea class="form-control" name="description"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>アイコン</label>
+                            <input type="file" class="form-control-file" name="icon" accept="image/*">
+                            <img id="iconPreview" class="preview-icon" style="display: none;">
+                        </div>
+                        <div class="form-group">
+                            <label>表示順</label>
+                            <input type="number" class="form-control" name="sort_order" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>状態</label>
+                            <select class="form-control" name="status">
+                                <option value="1">有効</option>
+                                <option value="0">無効</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" id="saveModel">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- フィールド設定モーダル -->
+    <div class="modal fade" id="fieldModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">フィールド設定</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="fieldForm">
+                        <input type="hidden" name="model_id">
+                        <div class="field-list">
+                            <!-- フィールドリストがここに動的に追加されます -->
+                        </div>
+                        <button type="button" class="btn btn-success btn-sm mt-3" id="addField">
+                            フィールドを追加
+                        </button>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" id="saveFields">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- フィールド設定のテンプレート -->
+    <template id="fieldTemplate">
+        <div class="field-item border p-3 mb-2">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>フィールド名</label>
+                        <input type="text" class="form-control" name="fields[{index}][name]" required>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>識別子</label>
+                        <input type="text" class="form-control" name="fields[{index}][identifier]" required pattern="[a-zA-Z0-9_]+">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>タイプ</label>
+                        <select class="form-control" name="fields[{index}][type]">
+                            <option value="text">テキスト</option>
+                            <option value="textarea">テキストエリア</option>
+                            <option value="number">数値</option>
+                            <option value="date">日付</option>
+                            <option value="select">セレクト</option>
+                            <option value="checkbox">チェックボックス</option>
+                            <option value="radio">ラジオボタン</option>
+                            <option value="file">ファイル</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <label>説明</label>
+                        <input type="text" class="form-control" name="fields[{index}][description]">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>必須</label>
+                        <select class="form-control" name="fields[{index}][required]">
+                            <option value="0">任意</option>
+                            <option value="1">必須</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>表示順</label>
+                        <input type="number" class="form-control" name="fields[{index}][sort_order]" value="0">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <button type="button" class="btn btn-danger btn-sm mt-4 remove-field">削除</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // アイコンプレビュー
+        $('input[name="icon"]').change(function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#iconPreview').attr('src', e.target.result).show();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // モデルを追加
+        $('#saveModel').click(async function() {
+            const form = $('#addModelForm')[0];
+            const formData = new FormData(form);
+            
+            try {
+                const response = await fetch('/admin/system/add_model', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.message || 'エラーが発生しました');
+                }
+            } catch (error) {
+                alert('エラーが発生しました');
+            }
+        });
+
+        // フィールド設定を表示
+        $('.field-btn').click(async function() {
+            const modelId = $(this).data('id');
+            $('#fieldForm [name=model_id]').val(modelId);
+            
+            try {
+                const response = await fetch(`/admin/system/get_fields/${modelId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const fieldList = $('.field-list');
+                    fieldList.empty();
+                    
+                    result.fields.forEach((field, index) => {
+                        const template = $('#fieldTemplate').html()
+                            .replace(/{index}/g, index);
+                        const fieldElement = $(template);
+                        
+                        // フィールドの値を設定
+                        fieldElement.find('[name$="[name]"]').val(field.name);
+                        fieldElement.find('[name$="[identifier]"]').val(field.identifier);
+                        fieldElement.find('[name$="[type]"]').val(field.type);
+                        fieldElement.find('[name$="[description]"]').val(field.description);
+                        fieldElement.find('[name$="[required]"]').val(field.required);
+                        fieldElement.find('[name$="[sort_order]"]').val(field.sort_order);
+                        
+                        fieldList.append(fieldElement);
+                    });
+                    
+                    $('#fieldModal').modal('show');
+                } else {
+                    alert(result.message || 'データの取得に失敗しました');
+                }
+            } catch (error) {
+                alert('エラーが発生しました');
+            }
+        });
+
+        // フィールドを追加
+        $('#addField').click(function() {
+            const fieldList = $('.field-list');
+            const index = fieldList.children().length;
+            const template = $('#fieldTemplate').html()
+                .replace(/{index}/g, index);
+            fieldList.append(template);
+        });
+
+        // フィールドを削除
+        $(document).on('click', '.remove-field', function() {
+            $(this).closest('.field-item').remove();
+        });
+
+        // フィールド設定を保存
+        $('#saveFields').click(async function() {
+            const form = $('#fieldForm');
+            const modelId = form.find('[name=model_id]').val();
+            const fields = [];
+            
+            // フィールドデータを収集
+            form.find('.field-item').each(function(index) {
+                const field = {
+                    name: $(this).find('[name$="[name]"]').val(),
+                    identifier: $(this).find('[name$="[identifier]"]').val(),
+                    type: $(this).find('[name$="[type]"]').val(),
+                    description: $(this).find('[name$="[description]"]').val(),
+                    required: $(this).find('[name$="[required]"]').val(),
+                    sort_order: $(this).find('[name$="[sort_order]"]').val()
+                };
+                fields.push(field);
+            });
+            
+            try {
+                const response = await fetch(`/admin/system/save_fields/${modelId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ fields })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    $('#fieldModal').modal('hide');
+                    alert('フィールド設定を保存しました');
+                } else {
+                    alert(result.message || 'エラーが発生しました');
+                }
+            } catch (error) {
+                alert('エラーが発生しました');
+            }
+        });
+
+        // モデルを削除
+        $('.delete-btn').click(async function() {
+            if (!confirm('本当に削除しますか？\n関連するデータもすべて削除されます。')) return;
+            
+            const id = $(this).data('id');
+            try {
+                const response = await fetch(`/admin/system/delete_model/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    $(this).closest('tr').remove();
+                } else {
+                    alert(result.message || 'エラーが発生しました');
+                }
+            } catch (error) {
+                alert('エラーが発生しました');
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -3,116 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= category.name %> - 新規ページ追加</title>
-    <!-- CKEditor CDN -->
-    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
+    <title><%= category.name %> - 新規ページ追加新規ページ追加</title>
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Quill.js CDN -->
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            background-color: #f5f5f5;
+            padding: 0;
+            margin: 0;
         }
-        .form-group {
-            margin-bottom: 15px;
+        
+        .container-fluid {
+            padding: 1.5rem;
         }
-        .form-group label {
-            display: inline-block;
-            width: 100px;
-            margin-right: 10px;
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .form-group input[type="text"],
-        .form-group textarea {
-            width: 500px;
-            padding: 5px;
+
+        .card-header {
+            background-color: #1696d7;
+            border-bottom: none;
+            color: white;
         }
-        .form-group input[type="number"] {
-            width: 100px;
-            padding: 5px;
+
+        #editor-container {
+            height: 400px;
+            margin-bottom: 1rem;
         }
-        .buttons {
-            margin-top: 20px;
+
+        .ql-editor {
+            min-height: 350px;
+            background-color: white;
         }
-        .buttons button {
-            padding: 5px 15px;
-            margin-right: 10px;
+
+        .btn-primary {
+            background-color: #1696d7;
+            border-color: #1696d7;
+        }
+
+        .btn-primary:hover {
+            background-color: #1283c1;
+            border-color: #1283c1;
         }
     </style>
 </head>
 <body>
-    <h1><%= category.name %> - 新規ページ追加</h1>
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="h3 mb-0"><%= category.name %> - 新規ページ追加</h1>
+            </div>
+            
+            <div class="card-body">
+                <form id="pageForm" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label for="title" class="form-label">タイトル</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                        <div class="invalid-feedback">
+                            タイトルを入力してください
+                        </div>
+                    </div>
 
-    <form id="pageForm">
-        <div class="form-group">
-            <label>タイトル：</label>
-            <input type="text" name="title" required>
-        </div>
-        <div class="form-group">
-            <label>内容：</label>
-            <textarea name="content" id="content" rows="10"></textarea>
-        </div>
-        <div class="form-group">
-            <label>表示順：</label>
-            <input type="number" name="sort_order" value="0" min="0">
-        </div>
-        <div class="form-group">
-            <label>状態：</label>
-            <select name="status">
-                <option value="1">表示</option>
-                <option value="0">非表示</option>
-            </select>
-        </div>
-        <div class="buttons">
-            <button type="submit">保存</button>
-            <button type="button" onclick="history.back()">キャンセル</button>
-        </div>
-    </form>
+                    <div class="mb-3">
+                        <label for="editor-container" class="form-label">内容</label>
+                        <div id="editor-container"></div>
+                        <input type="hidden" name="content" id="content" required>
+                    </div>
 
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="sort_order" class="form-label">表示順</label>
+                            <input type="number" class="form-control" id="sort_order" 
+                                   name="sort_order" value="0" min="0">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="status" class="form-label">状態</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="1">表示</option>
+                                <option value="0">非表示</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-secondary" onclick="history.back()">
+                            キャンセル
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Quill.js -->
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    
     <script>
-        // CKEditorの初期化
-        CKEDITOR.replace('content', {
-            height: 400,
-            filebrowserUploadUrl: '/admin/upload-image'
+        // Quill.jsの初期化
+        const quill = new Quill('#editor-container', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['blockquote', 'code-block'],
+                    [{ 'header': 1 }, { 'header': 2 }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }],
+                    [{ 'indent': '-1'}, { 'indent': '+1' }],
+                    [{ 'size': ['small', false, 'large', 'huge'] }],
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'font': [] }],
+                    [{ 'align': [] }],
+                    ['clean'],
+                    ['link', 'image']
+                ]
+            },
+            placeholder: 'ページ内容を入力してください...'
         });
 
-        // フォーム送信処理
-        document.getElementById('pageForm').addEventListener('submit', function(e) {
+        // 画像アップロード機能
+        const toolbar = quill.getModule('toolbar');
+        toolbar.addHandler('image', function() {
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*');
+            input.click();
+            
+            input.onchange = async () => {
+                const file = input.files[0];
+                if (file) {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    
+                    try {
+                        const response = await fetch('/admin/upload-image', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const result = await response.json();
+                        if (result.success && result.url) {
+                            const range = quill.getSelection();
+                            quill.insertEmbed(range.index, 'image', result.url);
+                        } else {
+                            alert('画像のアップロードに失敗しました');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('画像のアップロードに失敗しました');
+                    }
+                }
+            };
+        });
+
+        // フォームバリデーションと送信
+        const form = document.getElementById('pageForm');
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // CKEditorの内容を取得
-            const content = CKEDITOR.instances.content.getData();
+            if (!form.checkValidity()) {
+                e.stopPropagation();
+                form.classList.add('was-validated');
+                return;
+            }
+
+            // Quillエディタの内容を取得
+            document.getElementById('content').value = quill.root.innerHTML;
             
-            // フォームデータの作成
             const formData = new FormData(this);
-            formData.set('content', content);
+            const formDataObj = Object.fromEntries(formData.entries());
             
-            // フォームデータをオブジェクトに変換
-            const formDataObj = {};
-            formData.forEach((value, key) => {
-                formDataObj[key] = value;
-            });
-            
-            console.log('Sending data:', formDataObj); // デバッグ用ログ
-            
-            // APIリクエスト
-            fetch('/admin/pages/<%= category.id %>/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formDataObj)
-            })
-            .then(response => response.json())
-            .then(data => {
+            try {
+                const response = await fetch('/admin/pages/<%= category.id %>/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formDataObj)
+                });
+
+                const data = await response.json();
+                
                 if (data.success) {
                     alert(data.message || 'ページが正常に追加されました');
                     window.location.href = '/admin/pages/<%= category.id %>/list';
                 } else {
                     alert(data.message || 'エラーが発生しました');
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error('Error:', error);
                 alert('エラーが発生しました');
-            });
+            }
         });
     </script>
 </body>

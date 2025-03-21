@@ -97,20 +97,6 @@
             </div>
         </div>
 
-        <div class="menu-section">
-            <div class="menu-header">
-                クイックパネル
-                <span class="toggle-icon">▼</span>
-            </div>
-            <div class="menu-content">
-                <a href="/admin/content/ad_management" target="main">広告管理</a>
-                <a href="javascript:;">会社管理</a>
-                <a href="javascript:;">相互リンク</a>
-                <a href="javascript:;">メッセージ管理</a>
-                <a href="javascript:;">コメント管理</a>
-                <a href="javascript:;">システムキャッシュクリア</a>
-            </div>
-        </div>
         <div id="leftmenu_1" style="display: none;">
             <div class="menu-section">
                 <div class="menu-header">
@@ -118,25 +104,17 @@
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">フリーモジュール管理</a>
-                    <a href="javascript:;">広告管理</a>
-                    <a href="javascript:;">特集管理</a>
-                    <a href="javascript:;">お知らせ管理</a>
-                    <a href="javascript:;">相互リンク</a>
-                    <a href="javascript:;">メッセージ管理</a>
-                    <a href="javascript:;">コメント管理</a>
+                    <a href="/admin/content/free_module_management" target="main">フリーモジュール管理</a>
+                    <a href="/admin/content/ad_management" target="main">広告管理</a>
+                    <a href="/admin/content/feature_management" target="main">特集管理</a>
+                    <a href="/admin/content/announcement_management" target="main">お知らせ管理</a>
+                    <a href="/admin/content/link_management" target="main">相互リンク</a>
+                    <a href="/admin/content/message_management" target="main">メッセージ管理</a>
+                    <a href="/admin/content/comment_management" target="main">コメント管理</a>
+                    <a href="/admin/content/company_management" target="main">会社管理</a>
                 </div>
             </div>
-            
-            <div class="menu-section">
-                <div class="menu-header">
-                    その他のモジュール
-                    <span class="toggle-icon">▼</span>
-                </div>
-                <div class="menu-content">
-                </div>
-            </div>
-        </div>
+         </div>
 
         <div id="leftmenu_2" style="display: none;">
             <div class="menu-section">
@@ -145,10 +123,10 @@
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">サイト設定</a>
-                    <a href="javascript:;">静的キャッシュ設定</a>
-                    <a href="javascript:;">オンラインサポート設定</a>
-                    <a href="javascript:;">システムキャッシュクリア</a>
+                    <a href="/admin/system/site_setting" target="main">サイト設定</a>
+                    <a href="/admin/system/static_cache_setting" target="main">静的キャッシュ設定</a>
+                    <a href="/admin/system/online_support_setting" target="main">オンラインサポート設定</a>
+                    <a href="/admin/system/clear_cache" target="main">システムキャッシュクリア</a>
                 </div>
             </div>
 
@@ -183,9 +161,8 @@
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">システムユーザー管理</a>
-                    <a href="javascript:;">ユーザーグループ管理</a>
-                    <a href="javascript:;">ノードリスト</a>
+                    <a href="/admin/system/user_group_management" target="main">ユーザーグループ管理</a>
+                    <a href="/admin/system/node_list" target="main">ノードリスト</a>
                 </div>
             </div>
         </div>
@@ -197,8 +174,8 @@
                     <span class="toggle-icon">▼</span>
                 </div>
                 <div class="menu-content">
-                    <a href="javascript:;">モデル管理</a>
-                    <a href="javascript:;">メニュー管理</a>
+                    <a href="/admin/system/model_management" target="main">モデル管理</a>
+                    <a href="/admin/system/menu_management" target="main">メニュー管理</a>
                     <a href="javascript:;">データレイヤー管理</a>
                     <a href="javascript:;">連動管理</a>
                     <a href="javascript:;">ブロック管理</a>
@@ -300,6 +277,28 @@
                 }
             });
         });
+    </script>
+    <script>
+    async function clearCache(e) {
+        e.preventDefault();
+        if (!confirm('システムキャッシュをクリアしますか？')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/admin/content/clear_cache', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const result = await response.json();
+            
+            alert(result.message);
+        } catch (error) {
+            alert('エラーが発生しました: ' + error.message);
+        }
+    }
     </script>
 </body>
 </html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .container-fluid {
+            padding: 1.5rem;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: #1696d7;
+            border-bottom: none;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">会社管理</h1>
+                <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addCompanyModal">
+                    新規会社を追加
+                </button>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>会社名</th>
+                                <th>電話番号</th>
+                                <th>メール</th>
+                                <th>状態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% companies.forEach(function(company) { %>
+                            <tr>
+                                <td><%= company.id %></td>
+                                <td><%= company.name %></td>
+                                <td>
+                                    <a href="tel:<%= company.phone %>" class="text-decoration-none">
+                                        <%= company.phone %>
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="mailto:<%= company.email %>" class="text-decoration-none">
+                                        <%= company.email %>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge <%= company.status === 1 ? 'bg-success' : 'bg-secondary' %>">
+                                        <%= company.status === 1 ? '有効' : '無効' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary edit-btn" 
+                                                data-id="<%= company.id %>">編集</button>
+                                        <button class="btn btn-outline-danger delete-btn" 
+                                                data-id="<%= company.id %>">削除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新規追加モーダル -->
+    <div class="modal fade" id="addCompanyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新規会社追加</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addCompanyForm">
+                        <div class="mb-3">
+                            <label class="form-label">会社名</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">説明</label>
+                            <textarea class="form-control" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">住所</label>
+                            <input type="text" class="form-control" name="address">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">電話番号</label>
+                                <input type="tel" class="form-control" name="phone">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">メールアドレス</label>
+                                <input type="email" class="form-control" name="email">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Webサイト</label>
+                            <input type="url" class="form-control" name="website">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" id="saveCompany">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // トースト通知を表示する関数
+        function showToast(message, isError = false) {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            
+            const toastHtml = `
+                <div class="toast align-items-center text-white ${isError ? 'bg-danger' : 'bg-success'}" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.innerHTML = toastHtml;
+            document.body.appendChild(toastContainer);
+            
+            const toast = new bootstrap.Toast(toastContainer.querySelector('.toast'));
+            toast.show();
+            
+            setTimeout(() => {
+                document.body.removeChild(toastContainer);
+            }, 5000);
+        }
+
+        // 会社を追加
+        document.getElementById('saveCompany').addEventListener('click', async function() {
+            const formData = new FormData(document.getElementById('addCompanyForm'));
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('/admin/content/add_company', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showToast('会社を追加しました');
+                    location.reload();
+                } else {
+                    showToast(result.message || 'エラーが発生しました', true);
+                }
+            } catch (error) {
+                showToast('エラーが発生しました', true);
+            }
+        });
+
+        // 会社を削除
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                if (!confirm('本当に削除しますか？')) return;
+                
+                const id = this.dataset.id;
+                try {
+                    const response = await fetch(`/admin/content/delete_company/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('会社を削除しました');
+                        this.closest('tr').remove();
+                    } else {
+                        showToast(result.message || 'エラーが発生しました', true);
+                    }
+                } catch (error) {
+                    showToast('エラーが発生しました', true);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

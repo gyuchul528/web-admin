@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= title %></title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <h2>ユーザーグループ管理</h2>
+        
+        <!-- 新規追加ボタン -->
+        <button type="button" class="btn btn-primary mb-3" data-toggle="modal" data-target="#addGroupModal">
+            新規グループを追加
+        </button>
+
+        <!-- グループ一覧テーブル -->
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>グループ名</th>
+                    <th>説明</th>
+                    <th>状態</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% groups.forEach(function(group) { %>
+                <tr>
+                    <td><%= group.id %></td>
+                    <td><%= group.name %></td>
+                    <td><%= group.description %></td>
+                    <td><%= group.status === 1 ? '有効' : '無効' %></td>
+                    <td>
+                        <button class="btn btn-sm btn-info edit-btn" data-id="<%= group.id %>">編集</button>
+                        <button class="btn btn-sm btn-warning permission-btn" data-id="<%= group.id %>">権限設定</button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-id="<%= group.id %>">削除</button>
+                    </td>
+                </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 新規追加モーダル -->
+    <div class="modal fade" id="addGroupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新規グループ追加</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="addGroupForm">
+                        <div class="form-group">
+                            <label>グループ名</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>説明</label>
+                            <textarea class="form-control" name="description"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>状態</label>
+                            <select class="form-control" name="status">
+                                <option value="1">有効</option>
+                                <option value="0">無効</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" id="saveGroup">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 権限設定モーダル -->
+    <div class="modal fade" id="permissionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">権限設定</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="permissionForm">
+                        <input type="hidden" name="group_id">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>カテゴリー</th>
+                                    <th>閲覧</th>
+                                    <th>作成</th>
+                                    <th>編集</th>
+                                    <th>削除</th>
+                                </tr>
+                            </thead>
+                            <tbody id="permissionTableBody">
+                                <!-- 権限設定の行がJSで動的に追加されます -->
+                            </tbody>
+                        </table>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" id="savePermissions">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // グループを追加
+        $('#saveGroup').click(async function() {
+            const formData = new FormData($('#addGroupForm')[0]);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('/admin/system/add_group', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.message || 'エラーが発生しました');
+                }
+            } catch (error) {
+                alert('エラーが発生しました');
+            }
+        });
+
+        // 権限設定を表示
+        $('.permission-btn').click(async function() {
+            const groupId = $(this).data('id');
+            $('#permissionForm [name=group_id]').val(groupId);
+            
+            try {
+                const response = await fetch(`/admin/system/get_permissions/${groupId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const tbody = $('#permissionTableBody');
+                    tbody.empty();
+                    
+                    result.categories.forEach(category => {
+                        const permissions = result.permissions[category.id] || {};
+                        tbody.append(`
+                            <tr>
+                                <td>${category.name}</td>
+                                <td>
+                                    <input type="checkbox" name="permissions[${category.id}][view]" 
+                                           ${permissions.can_view ? 'checked' : ''}>
+                                </td>
+                                <td>
+                                    <input type="checkbox" name="permissions[${category.id}][create]"
+                                           ${permissions.can_create ? 'checked' : ''}>
+                                </td>
+                                <td>
+                                    <input type="checkbox" name="permissions[${category.id}][edit]"
+                                           ${permissions.can_edit ? 'checked' : ''}>
+                                </td>
+                                <td>
+                                    <input type="checkbox" name="permissions[${category.id}][delete]"
+                                           ${permissions.can_delete ? 'checked' : ''}>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                    
+                    $('#permissionModal').modal('show');
+                } else {
+                    alert(result.message || 'データの取得に失敗しました');
+                }
+            } catch (error) {
+                alert('エラーが発生しました');
+            }
+        });
+
+        // 権限設定を保存
+        $('#savePermissions').click(async function() {
+            const form = $('#permissionForm');
+            const groupId = form.find('[name=group_id]').val();
+            const permissions = {};
+            
+            // チェックボックスの状態を収集
+            form.find('input[type=checkbox]').each(function() {
+                const name = $(this).attr('name');
+                const matches = name.match(/permissions\[(\d+)\]\[(\w+)\]/);
+                if (matches) {
+                    const categoryId = matches[1];
+                    const permission = matches[2];
+                    
+                    if (!permissions[categoryId]) {
+                        permissions[categoryId] = {};
+                    }
+                    permissions[categoryId][permission] = this.checked;
+                }
+            });
+            
+            try {
+                const response = await fetch(`/admin/system/save_permissions/${groupId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ permissions })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    $('#permissionModal').modal('hide');
+                    alert('権限設定を保存しました');
+                } else {
+                    alert(result.message || 'エラーが発生しました');
+                }
+            } catch (error) {
+                alert('エラーが発生しました');
+            }
+        });
+
+        // グループを削除
+        $('.delete-btn').click(async function() {
+            if (!confirm('本当に削除しますか？')) return;
+            
+            const id = $(this).data('id');
+            try {
+                const response = await fetch(`/admin/system/delete_group/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    $(this).closest('tr').remove();
+                } else {
+                    alert(result.message || 'エラーが発生しました');
+                }
+            } catch (error) {
+                alert('エラーが発生しました');
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>モデル一覧</title>
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .container-fluid {
+            padding: 1.5rem;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: #1696d7;
+            border-bottom: none;
+            color: white;
+        }
+
+        .table > :not(caption) > * > * {
+            padding: 1rem;
+        }
+
+        .status-badge {
+            padding: 0.5em 1em;
+            border-radius: 20px;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">モデル一覧</h1>
+                <a href="/admin/model/add" class="btn btn-light">新規追加</a>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%">ID</th>
+                                <th style="width: 30%">モデル名</th>
+                                <th style="width: 20%">テーブル名</th>
+                                <th style="width: 15%">表示順序</th>
+                                <th style="width: 10%">状態</th>
+                                <th style="width: 15%">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% models.forEach(function(model) { %>
+                                <tr>
+                                    <td><%= model.id %></td>
+                                    <td><%= model.name %></td>
+                                    <td><%= model.table_name %></td>
+                                    <td>
+                                        <input type="number" class="form-control form-control-sm" 
+                                               value="<%= model.sort_order %>"
+                                               onchange="updateOrder(<%= model.id %>, this.value)">
+                                    </td>
+                                    <td>
+                                        <span class="status-badge <%= model.status ? 'bg-success' : 'bg-secondary' %>">
+                                            <%= model.status ? '有効' : '無効' %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="/admin/model/edit/<%= model.id %>" 
+                                               class="btn btn-sm btn-outline-primary">編集</a>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    onclick="confirmDelete(<%= model.id %>)">削除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 削除確認モーダル -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">削除確認</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    このモデルを削除してもよろしいですか？
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">削除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let deleteModal;
+        let modelIdToDelete;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        });
+
+        // トースト通知を表示する関数
+        function showToast(message, isError = false) {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            
+            const toastHtml = `
+                <div class="toast align-items-center text-white ${isError ? 'bg-danger' : 'bg-success'}" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.innerHTML = toastHtml;
+            document.body.appendChild(toastContainer);
+            
+            const toast = new bootstrap.Toast(toastContainer.querySelector('.toast'));
+            toast.show();
+            
+            setTimeout(() => {
+                document.body.removeChild(toastContainer);
+            }, 5000);
+        }
+
+        // 表示順序を更新する関数
+        async function updateOrder(id, order) {
+            try {
+                const response = await fetch('/admin/model/update-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id, order })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showToast('表示順序を更新しました');
+                } else {
+                    showToast('更新に失敗しました', true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('更新に失敗しました', true);
+            }
+        }
+
+        // 削除確認モーダルを表示する関数
+        function confirmDelete(id) {
+            modelIdToDelete = id;
+            deleteModal.show();
+            
+            document.getElementById('confirmDeleteBtn').onclick = async function() {
+                try {
+                    const response = await fetch(`/admin/model/delete/${modelIdToDelete}`, {
+                        method: 'POST'
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('モデルを削除しました');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        showToast(result.message || '削除に失敗しました', true);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('削除に失敗しました', true);
+                }
+                
+                deleteModal.hide();
+            };
+        }
+    </script>
+</body>
+</html> 

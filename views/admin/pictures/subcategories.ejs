@@ -1,286 +1,209 @@
-<%- include('../../partials/admin/header') %>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サブカテゴリー管理</title>
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .container-fluid {
+            padding: 1.5rem;
+        }
 
-<div class="container-fluid">
-    <div class="row">
-        <main class="col-md-12 px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">サブカテゴリー管理</h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group me-2">
-                        <a href="/admin/pictures/<%= category.id %>/list" class="btn btn-sm btn-outline-secondary">アルバム一覧に戻る</a>
-                    </div>
-                </div>
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: #1696d7;
+            border-bottom: none;
+            color: white;
+        }
+
+        .table > :not(caption) > * > * {
+            padding: 1rem;
+        }
+
+        .form-control-edit {
+            display: none;
+        }
+
+        .edit-mode .form-control-edit {
+            display: block;
+        }
+
+        .edit-mode .display-value {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">サブカテゴリー管理</h1>
+                <a href="/admin/pictures/<%= category.id %>/list" 
+                   class="btn btn-light">アルバム一覧に戻る</a>
             </div>
 
-            <% if (typeof message !== 'undefined' && message) { %>
-                <div class="alert alert-<%= messageType || 'info' %> alert-dismissible fade show" role="alert">
-                    <%= message %>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <% } %>
+            <div class="card-body">
+                <% if (typeof message !== 'undefined' && message) { %>
+                    <div class="alert alert-<%= messageType || 'info' %> alert-dismissible fade show" role="alert">
+                        <%= message %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <% } %>
 
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            サブカテゴリーの追加
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light text-dark">
+                                サブカテゴリーの追加
+                            </div>
+                            <div class="card-body">
+                                <form id="addSubcategoryForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">サブカテゴリー名 <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" name="name" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">表示順</label>
+                                        <input type="number" class="form-control" name="sort_order" value="0" min="0">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">追加</button>
+                                </form>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <form id="addSubcategoryForm">
-                                <div class="mb-3">
-                                    <label for="subcategoryName" class="form-label">サブカテゴリー名 <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="subcategoryName" name="name" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="sortOrder" class="form-label">表示順</label>
-                                    <input type="number" class="form-control" id="sortOrder" name="sort_order" value="0" min="0">
-                                </div>
-                                <button type="submit" class="btn btn-primary">追加</button>
-                            </form>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light text-dark">
+                                ヘルプ
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">サブカテゴリーについて</h5>
+                                <p class="card-text">サブカテゴリーはアルバムをさらに細かく分類するために使用します。</p>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2"><strong>サブカテゴリー名：</strong> 必須項目です。わかりやすい名前を付けてください。</li>
+                                    <li class="mb-2"><strong>表示順：</strong> 数字が小さいほど先頭に表示されます。</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            ヘルプ
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">サブカテゴリーについて</h5>
-                            <p class="card-text">サブカテゴリーはアルバムをさらに細かく分類するために使用します。</p>
-                            <ul>
-                                <li><strong>サブカテゴリー名：</strong> 必須項目です。わかりやすい名前を付けてください。</li>
-                                <li><strong>表示順：</strong> 数字が小さいほど先頭に表示されます。</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="table-responsive">
-                <table class="table table-striped table-sm">
-                    <thead>
-                        <tr>
-                            <th scope="col">ID</th>
-                            <th scope="col">サブカテゴリー名</th>
-                            <th scope="col">表示順</th>
-                            <th scope="col">作成日</th>
-                            <th scope="col">更新日</th>
-                            <th scope="col">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% if (subcategories && subcategories.length > 0) { %>
-                            <% subcategories.forEach(function(subcategory) { %>
-                                <tr id="subcategory-<%= subcategory.id %>">
-                                    <td><%= subcategory.id %></td>
-                                    <td>
-                                        <span class="subcategory-name"><%= subcategory.name %></span>
-                                        <input type="text" class="form-control subcategory-name-edit d-none" value="<%= subcategory.name %>">
-                                    </td>
-                                    <td>
-                                        <span class="subcategory-sort"><%= subcategory.sort_order %></span>
-                                        <input type="number" class="form-control subcategory-sort-edit d-none" value="<%= subcategory.sort_order %>" min="0">
-                                    </td>
-                                    <td><%= subcategory.created_at ? new Date(subcategory.created_at).toLocaleString() : '-' %></td>
-                                    <td><%= subcategory.updated_at ? new Date(subcategory.updated_at).toLocaleString() : '-' %></td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm edit-actions">
-                                            <button type="button" class="btn btn-outline-secondary edit-subcategory" data-id="<%= subcategory.id %>">編集</button>
-                                            <button type="button" class="btn btn-outline-danger delete-subcategory" data-id="<%= subcategory.id %>" data-name="<%= subcategory.name %>">削除</button>
-                                        </div>
-                                        <div class="btn-group btn-group-sm save-actions d-none">
-                                            <button type="button" class="btn btn-outline-primary save-subcategory" data-id="<%= subcategory.id %>">保存</button>
-                                            <button type="button" class="btn btn-outline-secondary cancel-edit">キャンセル</button>
-                                        </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>サブカテゴリー名</th>
+                                <th>表示順</th>
+                                <th>作成日</th>
+                                <th>更新日</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (subcategories && subcategories.length > 0) { %>
+                                <% subcategories.forEach(function(subcategory) { %>
+                                    <tr id="subcategory-<%= subcategory.id %>">
+                                        <td><%= subcategory.id %></td>
+                                        <td>
+                                            <span class="display-value"><%= subcategory.name %></span>
+                                            <input type="text" class="form-control form-control-edit" 
+                                                   value="<%= subcategory.name %>">
+                                        </td>
+                                        <td>
+                                            <span class="display-value"><%= subcategory.sort_order %></span>
+                                            <input type="number" class="form-control form-control-edit" 
+                                                   value="<%= subcategory.sort_order %>" min="0">
+                                        </td>
+                                        <td><%= subcategory.created_at ? new Date(subcategory.created_at).toLocaleString() : '-' %></td>
+                                        <td><%= subcategory.updated_at ? new Date(subcategory.updated_at).toLocaleString() : '-' %></td>
+                                        <td>
+                                            <div class="btn-group edit-actions">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary edit-subcategory" 
+                                                        data-id="<%= subcategory.id %>">編集</button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger delete-subcategory" 
+                                                        data-id="<%= subcategory.id %>" 
+                                                        data-name="<%= subcategory.name %>">削除</button>
+                                            </div>
+                                            <div class="btn-group save-actions d-none">
+                                                <button type="button" class="btn btn-sm btn-outline-primary save-subcategory" 
+                                                        data-id="<%= subcategory.id %>">保存</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary cancel-edit">キャンセル</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        サブカテゴリーがありません。新しいサブカテゴリーを作成してください。
                                     </td>
                                 </tr>
-                            <% }); %>
-                        <% } else { %>
-                            <tr>
-                                <td colspan="6" class="text-center">サブカテゴリーがありません。新しいサブカテゴリーを作成してください。</td>
-                            </tr>
-                        <% } %>
-                    </tbody>
-                </table>
-            </div>
-        </main>
-    </div>
-</div>
-
-<!-- 削除確認モーダル -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">サブカテゴリー削除の確認</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>サブカテゴリー「<span id="subcategoryName"></span>」を削除してもよろしいですか？</p>
-                <p class="text-danger">このサブカテゴリーに関連付けられているアルバムは、サブカテゴリーなしの状態になります。</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                <button type="button" class="btn btn-danger" id="confirmDelete">削除する</button>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // サブカテゴリー追加フォームの送信
-        const addSubcategoryForm = document.getElementById('addSubcategoryForm');
-        
-        addSubcategoryForm.addEventListener('submit', function(event) {
-            event.preventDefault();
+    <!-- 削除確認モーダル -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">サブカテゴリー削除の確認</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>サブカテゴリー「<span id="subcategoryName"></span>」を削除してもよろしいですか？</p>
+                    <p class="text-danger">このサブカテゴリーに関連付けられているアルバムは、サブカテゴリーなしの状態になります。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-danger" id="confirmDelete">削除する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // サブカテゴリー追加フォームの送信
+            const addSubcategoryForm = document.getElementById('addSubcategoryForm');
             
-            const formData = new FormData(this);
-            const subcategoryData = {};
-            
-            for (const [key, value] of formData.entries()) {
-                subcategoryData[key] = value;
-            }
-            
-            // サーバーにデータを送信
-            fetch('/admin/pictures/<%= category.id %>/subcategories/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(subcategoryData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 成功したらページをリロード
-                    window.location.reload();
-                } else {
-                    alert('サブカテゴリーの追加に失敗しました: ' + data.message);
+            addSubcategoryForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                const formData = new FormData(this);
+                const subcategoryData = {};
+                
+                for (const [key, value] of formData.entries()) {
+                    subcategoryData[key] = value;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('サブカテゴリー追加中にエラーが発生しました');
-            });
-        });
-
-        // 編集ボタンのイベントリスナー
-        const editButtons = document.querySelectorAll('.edit-subcategory');
-        
-        editButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const subcategoryId = this.getAttribute('data-id');
-                const row = document.getElementById(`subcategory-${subcategoryId}`);
-                
-                // 表示/非表示を切り替え
-                row.querySelector('.subcategory-name').classList.add('d-none');
-                row.querySelector('.subcategory-name-edit').classList.remove('d-none');
-                
-                row.querySelector('.subcategory-sort').classList.add('d-none');
-                row.querySelector('.subcategory-sort-edit').classList.remove('d-none');
-                
-                row.querySelector('.edit-actions').classList.add('d-none');
-                row.querySelector('.save-actions').classList.remove('d-none');
-            });
-        });
-
-        // キャンセルボタンのイベントリスナー
-        const cancelButtons = document.querySelectorAll('.cancel-edit');
-        
-        cancelButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const row = this.closest('tr');
-                
-                // 表示/非表示を切り替え
-                row.querySelector('.subcategory-name').classList.remove('d-none');
-                row.querySelector('.subcategory-name-edit').classList.add('d-none');
-                
-                row.querySelector('.subcategory-sort').classList.remove('d-none');
-                row.querySelector('.subcategory-sort-edit').classList.add('d-none');
-                
-                row.querySelector('.edit-actions').classList.remove('d-none');
-                row.querySelector('.save-actions').classList.add('d-none');
-            });
-        });
-
-        // 保存ボタンのイベントリスナー
-        const saveButtons = document.querySelectorAll('.save-subcategory');
-        
-        saveButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const subcategoryId = this.getAttribute('data-id');
-                const row = document.getElementById(`subcategory-${subcategoryId}`);
-                
-                const name = row.querySelector('.subcategory-name-edit').value;
-                const sortOrder = row.querySelector('.subcategory-sort-edit').value;
                 
                 // サーバーにデータを送信
-                fetch(`/admin/pictures/subcategories/${subcategoryId}/update`, {
+                fetch('/admin/pictures/<%= category.id %>/subcategories/add', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        name: name,
-                        sort_order: sortOrder
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // 成功したら表示を更新
-                        row.querySelector('.subcategory-name').textContent = name;
-                        row.querySelector('.subcategory-sort').textContent = sortOrder;
-                        
-                        // 表示/非表示を切り替え
-                        row.querySelector('.subcategory-name').classList.remove('d-none');
-                        row.querySelector('.subcategory-name-edit').classList.add('d-none');
-                        
-                        row.querySelector('.subcategory-sort').classList.remove('d-none');
-                        row.querySelector('.subcategory-sort-edit').classList.add('d-none');
-                        
-                        row.querySelector('.edit-actions').classList.remove('d-none');
-                        row.querySelector('.save-actions').classList.add('d-none');
-                    } else {
-                        alert('サブカテゴリーの更新に失敗しました: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('サブカテゴリー更新中にエラーが発生しました');
-                });
-            });
-        });
-
-        // 削除ボタンのイベントリスナー
-        const deleteButtons = document.querySelectorAll('.delete-subcategory');
-        const subcategoryNameElement = document.getElementById('subcategoryName');
-        const confirmDeleteButton = document.getElementById('confirmDelete');
-        let subcategoryIdToDelete;
-        
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                subcategoryIdToDelete = this.getAttribute('data-id');
-                const subcategoryName = this.getAttribute('data-name');
-                subcategoryNameElement.textContent = subcategoryName;
-                
-                // モーダルを表示
-                const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-                deleteModal.show();
-            });
-        });
-        
-        // 削除確認ボタンのイベントリスナー
-        confirmDeleteButton.addEventListener('click', function() {
-            if (subcategoryIdToDelete) {
-                // サーバーにデータを送信
-                fetch(`/admin/pictures/subcategories/${subcategoryIdToDelete}/delete`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    body: JSON.stringify(subcategoryData)
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -288,16 +211,138 @@
                         // 成功したらページをリロード
                         window.location.reload();
                     } else {
-                        alert('サブカテゴリーの削除に失敗しました: ' + data.message);
+                        alert('サブカテゴリーの追加に失敗しました: ' + data.message);
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('サブカテゴリー削除中にエラーが発生しました');
+                    alert('サブカテゴリー追加中にエラーが発生しました');
                 });
-            }
-        });
-    });
-</script>
+            });
 
-<%- include('../../partials/admin/footer') %> 
+            // 編集ボタンのイベントリスナー
+            const editButtons = document.querySelectorAll('.edit-subcategory');
+            
+            editButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const subcategoryId = this.getAttribute('data-id');
+                    const row = document.getElementById(`subcategory-${subcategoryId}`);
+                    
+                    // 表示/非表示を切り替え
+                    row.querySelector('.display-value').classList.add('d-none');
+                    row.querySelector('.form-control-edit').classList.remove('d-none');
+                    
+                    row.querySelector('.edit-actions').classList.add('d-none');
+                    row.querySelector('.save-actions').classList.remove('d-none');
+                });
+            });
+
+            // キャンセルボタンのイベントリスナー
+            const cancelButtons = document.querySelectorAll('.cancel-edit');
+            
+            cancelButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const row = this.closest('tr');
+                    
+                    // 表示/非表示を切り替え
+                    row.querySelector('.display-value').classList.remove('d-none');
+                    row.querySelector('.form-control-edit').classList.add('d-none');
+                    
+                    row.querySelector('.edit-actions').classList.remove('d-none');
+                    row.querySelector('.save-actions').classList.add('d-none');
+                });
+            });
+
+            // 保存ボタンのイベントリスナー
+            const saveButtons = document.querySelectorAll('.save-subcategory');
+            
+            saveButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const subcategoryId = this.getAttribute('data-id');
+                    const row = document.getElementById(`subcategory-${subcategoryId}`);
+                    
+                    const name = row.querySelector('.form-control-edit').value;
+                    const sortOrder = row.querySelector('.form-control-edit').value;
+                    
+                    // サーバーにデータを送信
+                    fetch(`/admin/pictures/subcategories/${subcategoryId}/update`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name: name,
+                            sort_order: sortOrder
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 成功したら表示を更新
+                            row.querySelector('.display-value').textContent = name;
+                            row.querySelector('.form-control-edit').value = sortOrder;
+                            
+                            // 表示/非表示を切り替え
+                            row.querySelector('.display-value').classList.remove('d-none');
+                            row.querySelector('.form-control-edit').classList.add('d-none');
+                            
+                            row.querySelector('.edit-actions').classList.remove('d-none');
+                            row.querySelector('.save-actions').classList.add('d-none');
+                        } else {
+                            alert('サブカテゴリーの更新に失敗しました: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('サブカテゴリー更新中にエラーが発生しました');
+                    });
+                });
+            });
+
+            // 削除ボタンのイベントリスナー
+            const deleteButtons = document.querySelectorAll('.delete-subcategory');
+            const subcategoryNameElement = document.getElementById('subcategoryName');
+            const confirmDeleteButton = document.getElementById('confirmDelete');
+            let subcategoryIdToDelete;
+            
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    subcategoryIdToDelete = this.getAttribute('data-id');
+                    const subcategoryName = this.getAttribute('data-name');
+                    subcategoryNameElement.textContent = subcategoryName;
+                    
+                    // モーダルを表示
+                    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                    deleteModal.show();
+                });
+            });
+            
+            // 削除確認ボタンのイベントリスナー
+            confirmDeleteButton.addEventListener('click', function() {
+                if (subcategoryIdToDelete) {
+                    // サーバーにデータを送信
+                    fetch(`/admin/pictures/subcategories/${subcategoryIdToDelete}/delete`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 成功したらページをリロード
+                            window.location.reload();
+                        } else {
+                            alert('サブカテゴリーの削除に失敗しました: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('サブカテゴリー削除中にエラーが発生しました');
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

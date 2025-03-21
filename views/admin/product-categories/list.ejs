@@ -4,65 +4,84 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>製品分類一覧</title>
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .operation-buttons {
-            margin-bottom: 20px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 8px;
-            border: 1px solid #ddd;
-        }
-        th {
             background-color: #f5f5f5;
+            padding: 0;
+            margin: 0;
         }
+        
+        .container-fluid {
+            padding: 1.5rem;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: #1696d7;
+            border-bottom: none;
+            color: white;
+        }
+
         .order-input {
-            width: 60px;
+            width: 80px !important;
         }
+
         .subcategories {
-            margin-left: 30px;
-            border-left: 2px solid #ddd;
-            padding-left: 10px;
+            margin-left: 1.5rem;
+            border-left: 2px solid #dee2e6;
+            padding-left: 1rem;
         }
+
         .subcategory-item {
-            margin: 5px 0;
-            padding: 5px;
-            background: #f9f9f9;
+            background-color: #f8f9fa;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 0.25rem;
         }
+
         .add-subcategory {
-            margin: 5px 0;
-            padding: 5px;
-            color: #666;
+            color: #6c757d;
             cursor: pointer;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
         }
-        .subcategory-form {
-            display: none;
-            margin: 5px 0;
-            padding: 5px;
+
+        .add-subcategory:hover {
+            color: #1696d7;
+            background-color: #f8f9fa;
+            border-radius: 0.25rem;
         }
     </style>
 </head>
 <body>
-    <h1>製品分類一覧</h1>
-
-    <div class="operation-buttons">
-        <button onclick="showAddForm()">新規分類追加</button>
-        <button onclick="updateOrder()">表示順序を更新</button>
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">製品分類一覧</h1>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-light" onclick="showAddForm()">
+                        新規分類追加
+                    </button>
+                    <button class="btn btn-outline-light" onclick="updateOrder()">
+                        表示順序を更新
+                    </button>
+                </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 50px;">ID</th>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 80px;">ID</th>
                 <th>分類名</th>
-                <th style="width: 100px;">表示順序</th>
+                                <th style="width: 120px;">表示順序</th>
                 <th style="width: 200px;">操作</th>
             </tr>
         </thead>
@@ -71,244 +90,431 @@
                 <tr>
                     <td><%= category.id %></td>
                     <td>
-                        <span class="category-name"><%= category.name %></span>
-                        <input type="text" class="edit-name" 
-                               value="<%= category.name %>" style="display: none;">
+                                        <div class="category-name mb-2"><%= category.name %></div>
+                                        <input type="text" class="form-control edit-name d-none" 
+                                               value="<%= category.name %>">
                         <div class="subcategories" id="subcategories-<%= category.id %>">
                             <!-- 小分類はJavaScriptで動的に表示 -->
                         </div>
-                        <div class="add-subcategory" onclick="showAddSubcategoryForm(<%= category.id %>)">
-                            + 小分類を追加
+                                        <div class="add-subcategory d-flex align-items-center" 
+                                             onclick="showAddSubcategoryForm(<%= category.id %>)">
+                                            <i class="bi bi-plus-circle me-2"></i> 小分類を追加
+                                        </div>
+                                        <div class="subcategory-form d-none" id="subcategory-form-<%= category.id %>">
+                                            <form class="subcategory-add-form" onsubmit="handleSubcategorySubmit(event, <%= category.id %>)">
+                                                <div class="card mt-2">
+                                                    <div class="card-body">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">小分類名 <span class="text-danger">*</span></label>
+                                                            <input type="text" class="form-control" 
+                                                                   id="new-subcategory-name-<%= category.id %>"
+                                                                   required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">表示順序</label>
+                                                            <input type="number" class="form-control" 
+                                                                   id="new-subcategory-order-<%= category.id %>" 
+                                                                   value="0">
+                                                        </div>
+                                                        <div class="d-flex gap-2">
+                                                            <button type="submit" class="btn btn-primary">追加</button>
+                                                            <button type="button" class="btn btn-secondary" 
+                                                                    onclick="hideAddSubcategoryForm(<%= category.id %>)">
+                                                                キャンセル
+                                                            </button>
+                                                        </div>
+                                                    </div>
                         </div>
-                        <div class="subcategory-form" id="subcategory-form-<%= category.id %>">
-                            <input type="text" placeholder="小分類名" id="new-subcategory-name-<%= category.id %>">
-                            <input type="number" placeholder="表示順序" id="new-subcategory-order-<%= category.id %>" value="0">
-                            <button onclick="addSubcategory(<%= category.id %>)">追加</button>
-                            <button onclick="hideAddSubcategoryForm(<%= category.id %>)">キャンセル</button>
+                                            </form>
                         </div>
                     </td>
                     <td>
-                        <input type="number" class="order-input" 
+                                        <input type="number" class="form-control form-control-sm order-input" 
                                data-id="<%= category.id %>" 
                                value="<%= category.sort_order %>">
                     </td>
                     <td>
-                        <button onclick="editCategory(<%= category.id %>)">編集</button>
-                        <button onclick="deleteCategory(<%= category.id %>)">削除</button>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    onclick="editCategory(<%= category.id %>)">編集</button>
+                                            <button class="btn btn-sm btn-outline-danger" 
+                                                    onclick="deleteCategory(<%= category.id %>)">削除</button>
+                                        </div>
                     </td>
                 </tr>
             <% }); %>
         </tbody>
     </table>
-
-    <!-- 新規追加フォーム（モーダル） -->
-    <div id="addModal" style="display: none; position: fixed; top: 50%; left: 50%; 
-                             transform: translate(-50%, -50%); background: white; 
-                             padding: 20px; border: 1px solid #ddd; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-        <h2>新規分類追加</h2>
-        <div>
-            <label>分類名：</label>
-            <input type="text" id="newCategoryName">
-        </div>
-        <div style="margin-top: 10px;">
-            <label>表示順序：</label>
-            <input type="number" id="newCategoryOrder" value="0">
-        </div>
-        <div style="margin-top: 20px;">
-            <button onclick="addCategory()">保存</button>
-            <button onclick="hideAddForm()">キャンセル</button>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- 新規追加モーダル -->
+    <div class="modal fade" id="addModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新規分類追加</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">分類名</label>
+                        <input type="text" class="form-control" id="newCategoryName">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">表示順序</label>
+                        <input type="number" class="form-control" id="newCategoryOrder" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-primary" onclick="addCategory()">保存</button>
+                </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         // 新規追加フォームの表示/非表示
         function showAddForm() {
-            document.getElementById('addModal').style.display = 'block';
-        }
-        
-        function hideAddForm() {
-            document.getElementById('addModal').style.display = 'none';
+            const modal = new bootstrap.Modal(document.getElementById('addModal'));
+            modal.show();
         }
 
-        // 新規分類の追加
-        async function addCategory() {
-            const name = document.getElementById('newCategoryName').value;
-            const order = document.getElementById('newCategoryOrder').value;
+        // トースト通知を表示する関数を追加
+        function showToast(message, isError = false) {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            toastContainer.style.zIndex = '1050';
             
-            if (!name) {
-                alert('分類名を入力してください');
+            const toastHtml = `
+                <div class="toast align-items-center text-white ${isError ? 'bg-danger' : 'bg-success'}" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.innerHTML = toastHtml;
+            document.body.appendChild(toastContainer);
+            
+            const toast = new bootstrap.Toast(toastContainer.querySelector('.toast'), {
+                delay: 3000
+            });
+            toast.show();
+            
+            toast._element.addEventListener('hidden.bs.toast', () => {
+                document.body.removeChild(toastContainer);
+            });
+        }
+
+        // 小分類フォームの送信を処理する関数を修正
+        async function handleSubcategorySubmit(event, categoryId) {
+            event.preventDefault();
+            
+            const nameInput = document.getElementById(`new-subcategory-name-${categoryId}`);
+            const orderInput = document.getElementById(`new-subcategory-order-${categoryId}`);
+            
+            if (!nameInput.value.trim()) {
+                showToast('小分類名を入力してください', true);
                 return;
             }
 
             try {
-                const response = await fetch('/admin/product-categories/add', {
+                const response = await fetch(`/admin/product-categories/${categoryId}/subcategory/add`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ name, sort_order: order })
+                    body: JSON.stringify({
+                        name: nameInput.value.trim(),
+                        sort_order: orderInput.value || 0
+                    })
                 });
                 
                 const result = await response.json();
+                
                 if (result.success) {
-                    alert('製品分類を追加しました');
-                    location.reload();
+                    showToast('小分類を追加しました');
+                    nameInput.value = '';
+                    orderInput.value = '0';
+                    hideAddSubcategoryForm(categoryId);
+                    await loadSubcategories(categoryId); // 小分類リストを即時更新
                 } else {
-                    alert(result.message || '追加に失敗しました');
+                    showToast(result.message || '小分類の追加に失敗しました', true);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('追加に失敗しました');
+                showToast('小分類の追加に失敗しました', true);
             }
         }
 
-        // 分類の削除
-        async function deleteCategory(id) {
-            if (!confirm('この分類を削除してもよろしいですか？')) {
+        // 小分類フォームの表示/非表示を制御する関数
+        function showAddSubcategoryForm(categoryId) {
+            const form = document.getElementById(`subcategory-form-${categoryId}`);
+            if (form) {
+                form.classList.remove('d-none');
+            }
+        }
+
+        function hideAddSubcategoryForm(categoryId) {
+            const form = document.getElementById(`subcategory-form-${categoryId}`);
+            if (form) {
+                form.classList.add('d-none');
+                // フォームをリセット
+                const nameInput = document.getElementById(`new-subcategory-name-${categoryId}`);
+                const orderInput = document.getElementById(`new-subcategory-order-${categoryId}`);
+                if (nameInput) nameInput.value = '';
+                if (orderInput) orderInput.value = '0';
+            }
+        }
+
+        // 小分類を読み込む関数を修正
+        async function loadSubcategories(categoryId) {
+            const container = document.getElementById(`subcategories-${categoryId}`);
+            if (!container) return;
+            
+            try {
+                const response = await fetch(`/admin/product-categories/${categoryId}/subcategories`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const subcategories = await response.json();
+                
+                container.innerHTML = '';
+                
+                if (Array.isArray(subcategories) && subcategories.length > 0) {
+                    const activeSubcategories = subcategories.filter(sub => !sub.is_deleted);
+                    if (activeSubcategories.length > 0) {
+                        activeSubcategories.forEach(sub => {
+                            const subHtml = `
+                                <div class="subcategory-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="fw-medium">${sub.name}</span>
+                                        <input type="number" 
+                                               class="form-control form-control-sm order-input" 
+                                               data-id="${sub.id}" 
+                                               value="${sub.sort_order || 0}"
+                                               style="width: 70px;"
+                                               onchange="updateSubcategoryOrder(${sub.id}, this.value, ${categoryId})">
+                                    </div>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary btn-sm" 
+                                                onclick="editSubcategory(${sub.id}, '${sub.name}', ${categoryId})">
+                                            編集
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" 
+                                                onclick="deleteSubcategory(${sub.id}, ${categoryId})">
+                                            削除
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            container.insertAdjacentHTML('beforeend', subHtml);
+                        });
+                    } else {
+                        container.innerHTML = '<div class="text-muted small py-2">小分類がありません</div>';
+                    }
+                } else {
+                    container.innerHTML = '<div class="text-muted small py-2">小分類がありません</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                container.innerHTML = '<div class="text-danger small py-2">小分類の読み込みに失敗しました</div>';
+            }
+        }
+
+        // 小分類を編集する関数を修正
+        async function editSubcategory(id, currentName, categoryId) {
+            const name = prompt('新しい小分類名を入力してください', currentName);
+            if (!name || name === currentName) return;
+
+            try {
+                const response = await fetch(`/admin/product-categories/subcategory/${id}/edit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('小分類を更新しました');
+                    await loadSubcategories(result.category_id || categoryId);
+                } else {
+                    showToast(result.message || '小分類の更新に失敗しました', true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('小分類の更新に失敗しました', true);
+            }
+        }
+
+        // 小分類を削除する関数を修正
+        async function deleteSubcategory(id, categoryId) {
+            if (!confirm('この小分類を削除してもよろしいですか？\n※この小分類を使用している製品は「未分類」となります。')) {
                 return;
             }
 
             try {
-                const response = await fetch(`/admin/product-categories/delete/${id}`, {
-                    method: 'POST'
+                const response = await fetch(`/admin/product-categories/subcategory/${id}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
                 });
                 
                 const result = await response.json();
+                
                 if (result.success) {
-                    alert('製品分類を削除しました');
-                    location.reload();
+                    showToast('小分類を削除しました');
+                    await loadSubcategories(categoryId);
                 } else {
-                    alert(result.message || '削除に失敗しました');
+                    showToast(result.message || '小分類の削除に失敗しました', true);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('削除に失敗しました');
+                showToast('小分類の削除に失敗しました', true);
             }
         }
 
-        // 表示順序の更新
+        // 小分類の順序を更新する関数を追加
+        async function updateSubcategoryOrder(id, order, categoryId) {
+            try {
+                const response = await fetch('/admin/product-categories/subcategories/updateOrder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ [id]: order })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('表示順序を更新しました');
+                    await loadSubcategories(categoryId); // 小分類リストを即時更新
+                } else {
+                    showToast(result.message || '表示順序の更新に失敗しました', true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('表示順序の更新に失敗しました', true);
+            }
+        }
+
+        // ページ読み込み時に全カテゴリーの小分類を読み込む
+        document.addEventListener('DOMContentLoaded', function() {
+            const categories = document.querySelectorAll('[id^="subcategories-"]');
+            categories.forEach(container => {
+                const categoryId = container.id.split('-')[1];
+                loadSubcategories(categoryId);
+            });
+        });
+
+        // 分類を編集する関数
+        async function editCategory(id) {
+            const row = document.querySelector(`[data-id="${id}"]`).closest('tr');
+            const nameElement = row.querySelector('.category-name');
+            const currentName = nameElement.textContent;
+            
+            const name = prompt('新しい分類名を入力してください', currentName);
+            if (!name || name === currentName) return;
+
+            try {
+                const response = await fetch(`/admin/product-categories/${id}/edit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('分類を更新しました');
+                    nameElement.textContent = name;
+                } else {
+                    showToast(result.message || '分類の更新に失敗しました', true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('分類の更新に失敗しました', true);
+            }
+        }
+
+        // 分類を削除する関数
+        async function deleteCategory(id) {
+            if (!confirm('この分類を削除してもよろしいですか？\n※この分類に属する小分類と製品も削除されます。')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/product-categories/${id}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('分類を削除しました');
+                    // 該当の行を削除
+                    const row = document.querySelector(`[data-id="${id}"]`).closest('tr');
+                    row.remove();
+                } else {
+                    showToast(result.message || '分類の削除に失敗しました', true);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('分類の削除に失敗しました', true);
+            }
+        }
+
+        // 分類の表示順序を更新する関数
         async function updateOrder() {
             const orders = {};
             document.querySelectorAll('.order-input').forEach(input => {
-                orders[input.dataset.id] = input.value;
+                if (input.dataset.id) { // 分類の入力のみを対象とする
+                    orders[input.dataset.id] = input.value;
+                }
             });
 
             try {
                 const response = await fetch('/admin/product-categories/updateOrder', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(orders)
                 });
-                
+
                 const result = await response.json();
+                
                 if (result.success) {
-                    alert('表示順序を更新しました');
+                    showToast('表示順序を更新しました');
+                    // ページをリロード
                     location.reload();
                 } else {
-                    alert(result.message || '更新に失敗しました');
+                    showToast(result.message || '表示順序の更新に失敗しました', true);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('更新に失敗しました');
+                showToast('表示順序の更新に失敗しました', true);
             }
         }
-
-        // 小分類の読み込みと表示
-        async function loadSubcategories(categoryId) {
-            try {
-                const response = await fetch(`/admin/product-categories/${categoryId}/subcategories`);
-                const subcategories = await response.json();
-                
-                const container = document.getElementById(`subcategories-${categoryId}`);
-                container.innerHTML = subcategories.map(sub => `
-                    <div class="subcategory-item" id="subcategory-${sub.id}">
-                        <span class="subcategory-name">${sub.name}</span>
-                        <input type="number" class="order-input" value="${sub.sort_order || 0}" 
-                               onchange="updateSubcategoryOrder(${sub.id}, this.value)">
-                        <button onclick="editSubcategory(${sub.id})">編集</button>
-                        <button onclick="deleteSubcategory(${sub.id})">削除</button>
-                    </div>
-                `).join('');
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        }
-
-        // 小分類追加フォームの表示/非表示
-        function showAddSubcategoryForm(categoryId) {
-            document.getElementById(`subcategory-form-${categoryId}`).style.display = 'block';
-        }
-
-        function hideAddSubcategoryForm(categoryId) {
-            document.getElementById(`subcategory-form-${categoryId}`).style.display = 'none';
-        }
-
-        // 小分類の追加
-        async function addSubcategory(categoryId) {
-            const name = document.getElementById(`new-subcategory-name-${categoryId}`).value;
-            const order = document.getElementById(`new-subcategory-order-${categoryId}`).value;
-            
-            if (!name) {
-                alert('小分類名を入力してください');
-                return;
-            }
-
-            try {
-                const response = await fetch(`/admin/product-categories/${categoryId}/subcategories/add`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ name, sort_order: order })
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    alert('小分類を追加しました');
-                    loadSubcategories(categoryId);
-                    hideAddSubcategoryForm(categoryId);
-                } else {
-                    alert(result.message || '追加に失敗しました');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('追加に失敗しました');
-            }
-        }
-
-        // 小分類の削除
-        async function deleteSubcategory(id) {
-            if (!confirm('この小分類を削除してもよろしいですか？')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/admin/product-subcategories/${id}/delete`, {
-                    method: 'POST'
-                });
-                
-                const result = await response.json();
-                if (result.success) {
-                    alert('小分類を削除しました');
-                    document.getElementById(`subcategory-${id}`).remove();
-                } else {
-                    alert(result.message || '削除に失敗しました');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('削除に失敗しました');
-            }
-        }
-
-        // ページ読み込み時に各カテゴリーの小分類を読み込む
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('[id^="subcategories-"]').forEach(el => {
-                const categoryId = el.id.split('-')[1];
-                loadSubcategories(categoryId);
-            });
-        });
     </script>
 </body>
 </html> 

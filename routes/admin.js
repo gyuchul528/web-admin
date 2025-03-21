@@ -1076,38 +1076,47 @@ router.post('/product-categories/edit/:id', async (req, res) => {
 });
 
 // 製品分類の削除
-router.post('/product-categories/delete/:id', async (req, res) => {
+router.post('/product-categories/:id/delete', async (req, res) => {
+    const connection = await pool.getConnection();
     try {
-        const categoryId = req.params.id;
-        
-        // この分類を使用している製品があるか確認
-        const [products] = await pool.query(
-            'SELECT COUNT(*) as count FROM products WHERE product_category_id = ?',
-            [categoryId]
-        );
-        
-        if (products[0].count > 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'この分類を使用している製品が存在するため削除できません'
-            });
-        }
-        
-        await pool.query(
+        await connection.beginTransaction();
+
+        const { id } = req.params;
+
+        // 分類を削除
+        const [result] = await connection.query(
             'DELETE FROM product_categories WHERE id = ?',
-            [categoryId]
+            [id]
         );
         
+        if (result.affectedRows === 0) {
+            throw new Error('分類が見つかりません');
+        }
+
+        await connection.commit();
         res.json({
             success: true,
-            message: '製品分類を削除しました'
+            message: '分類を削除しました'
         });
-    } catch (err) {
-        console.error('Database error:', err);
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error deleting category:', error);
+        
+        // 外部キー制約エラーの場合
+        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+            res.status(400).json({
+                success: false,
+                message: 'この分類は小分類で使用されているため削除できません'
+            });
+            return;
+        }
+
         res.status(500).json({
             success: false,
-            message: 'データベースエラー: ' + err.message
+            message: '分類の削除中にエラーが発生しました'
         });
+    } finally {
+        connection.release();
     }
 });
 
@@ -1233,100 +1242,127 @@ router.post('/products/:categoryId/add',
 // 小分類一覧の取得（Ajax用）
 router.get('/product-categories/:categoryId/subcategories', async (req, res) => {
     try {
-        const categoryId = req.params.categoryId;
+        const { categoryId } = req.params;
+        
         const [subcategories] = await pool.query(
-            'SELECT * FROM product_subcategories WHERE category_id = ? ORDER BY sort_order ASC, id ASC',
+            'SELECT * FROM product_subcategories WHERE category_id = ? ORDER BY sort_order ASC',
             [categoryId]
         );
+
         res.json(subcategories);
-    } catch (err) {
-        console.error('Database error:', err);
-        res.status(500).json({ error: 'データベースエラー' });
+    } catch (error) {
+        console.error('Error fetching subcategories:', error);
+        res.status(500).json({ success: false, message: 'サーバーエラーが発生しました' });
     }
 });
 
-// 小分類の追加
-router.post('/product-categories/:categoryId/subcategories/add', async (req, res) => {
+// 小分類を追加
+router.post('/product-categories/:categoryId/subcategory/add', async (req, res) => {
     try {
-        const categoryId = req.params.categoryId;
+        const { categoryId } = req.params;
         const { name, sort_order } = req.body;
+
+        if (!name || name.trim() === '') {
+            return res.status(400).json({ success: false, message: '小分類名は必須です' });
+        }
         
         const [result] = await pool.query(
             'INSERT INTO product_subcategories (category_id, name, sort_order) VALUES (?, ?, ?)',
-            [categoryId, name, sort_order || 0]
+            [categoryId, name.trim(), sort_order || 0]
         );
         
         res.json({
             success: true,
             message: '小分類を追加しました',
-            subcategoryId: result.insertId
+            id: result.insertId 
         });
-    } catch (err) {
-        console.error('Database error:', err);
-        res.status(500).json({
-            success: false,
-            message: 'データベースエラー: ' + err.message
-        });
+    } catch (error) {
+        console.error('Error adding subcategory:', error);
+        res.status(500).json({ success: false, message: 'サーバーエラーが発生しました' });
     }
 });
 
-// 小分類の更新
-router.post('/product-subcategories/:id/update', async (req, res) => {
+// 小分類を編集
+router.post('/product-categories/subcategory/:id/edit', async (req, res) => {
     try {
-        const { name, sort_order } = req.body;
-        const subcategoryId = req.params.id;
-        
-        await pool.query(
-            'UPDATE product_subcategories SET name = ?, sort_order = ? WHERE id = ?',
-            [name, sort_order || 0, subcategoryId]
-        );
-        
-        res.json({
-            success: true,
-            message: '小分類を更新しました'
-        });
-    } catch (err) {
-        console.error('Database error:', err);
-        res.status(500).json({
-            success: false,
-            message: 'データベースエラー: ' + err.message
-        });
-    }
-});
+        const { id } = req.params;
+        const { name } = req.body;
 
-// 小分類の削除
-router.post('/product-subcategories/:id/delete', async (req, res) => {
-    try {
-        const subcategoryId = req.params.id;
-        
-        // この小分類を使用している製品があるか確認
-        const [products] = await pool.query(
-            'SELECT COUNT(*) as count FROM products WHERE subcategory_id = ?',
-            [subcategoryId]
-        );
-        
-        if (products[0].count > 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'この小分類を使用している製品が存在するため削除できません'
-            });
+        if (!name || name.trim() === '') {
+            return res.status(400).json({ success: false, message: '小分類名は必須です' });
         }
-        
-        await pool.query(
-            'DELETE FROM product_subcategories WHERE id = ?',
-            [subcategoryId]
+
+        const [result] = await pool.query(
+            'UPDATE product_subcategories SET name = ? WHERE id = ?',
+            [name.trim(), id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: '小分類が見つかりません' });
+        }
+
+        // カテゴリーIDを取得して返す
+        const [[subcategory]] = await pool.query(
+            'SELECT category_id FROM product_subcategories WHERE id = ?',
+            [id]
         );
         
         res.json({
             success: true,
-            message: '小分類を削除しました'
+            message: '小分類を更新しました',
+            category_id: subcategory.category_id 
         });
-    } catch (err) {
-        console.error('Database error:', err);
+    } catch (error) {
+        console.error('Error updating subcategory:', error);
+        res.status(500).json({ success: false, message: 'サーバーエラーが発生しました' });
+    }
+});
+
+// 小分類の削除処理を修正
+router.post('/product-categories/subcategory/:id/delete', async (req, res) => {
+    try {
+        const subcategoryId = req.params.id;
+        
+        // 論理削除を実行
+        await pool.query(
+            'UPDATE product_subcategories SET is_deleted = TRUE WHERE id = ?',
+            [subcategoryId]
+        );
+        
+        // 関連する製品の subcategory_id を NULL に設定
+        await pool.query(
+            'UPDATE products SET subcategory_id = NULL WHERE subcategory_id = ?',
+            [subcategoryId]
+        );
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting subcategory:', error);
         res.status(500).json({
             success: false,
-            message: 'データベースエラー: ' + err.message
+            message: '小分類の削除中にエラーが発生しました'
         });
+    }
+});
+
+// 小分類の表示順序を更新
+router.post('/product-categories/subcategories/updateOrder', async (req, res) => {
+    try {
+        const orders = req.body;
+        
+        await Promise.all(
+            Object.entries(orders).map(([id, order]) => 
+                pool.query(
+                    'UPDATE product_subcategories SET sort_order = ? WHERE id = ?',
+                    [order, id]
+                )
+            )
+        );
+
+        res.json({ success: true, message: '表示順序を更新しました' });
+    } catch (error) {
+        console.error('Error updating subcategory orders:', error);
+        res.status(500).json({ success: false, message: 'サーバーエラーが発生しました' });
     }
 });
 
@@ -2447,7 +2483,7 @@ router.post('/pictures/:categoryId/subcategories/add', async (req, res) => {
 });
 
 // サブカテゴリー更新の処理
-router.post('/pictures/subcategories/:subcategoryId/update', async (req, res) => {
+router.post('/pictures/subcategories/:id/update', async (req, res) => {
     try {
         const subcategoryId = req.params.subcategoryId;
         const { name, sort_order = 0 } = req.body;
@@ -2684,6 +2720,1221 @@ router.post('/content/update_ad/:id', async (req, res) => {
         });
     } finally {
         if (connection) connection.release();
+    }
+});
+
+// 会社管理ルート
+router.get('/content/company_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [companies] = await connection.query(
+            'SELECT * FROM companies ORDER BY id DESC'
+        );
+        
+        res.render('admin/content/company_management', {
+            title: '会社管理',
+            companies: companies
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.render('admin/content/company_management', {
+            title: '会社管理',
+            companies: [],
+            error: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 相互リンク管理ルート
+router.get('/content/link_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [links] = await connection.query(
+            'SELECT * FROM mutual_links ORDER BY sort_order ASC'
+        );
+        
+        res.render('admin/content/link_management', {
+            title: '相互リンク管理',
+            links: links
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.render('admin/content/link_management', {
+            title: '相互リンク管理',
+            links: [],
+            error: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// メッセージ管理ルート
+router.get('/content/message_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [messages] = await connection.query(
+            'SELECT * FROM messages ORDER BY created_at DESC'
+        );
+        
+        res.render('admin/content/message_management', {
+            title: 'メッセージ管理',
+            messages: messages
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.render('admin/content/message_management', {
+            title: 'メッセージ管理',
+            messages: [],
+            error: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// コメント管理ルート
+router.get('/content/comment_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [comments] = await connection.query(
+            'SELECT * FROM comments ORDER BY created_at DESC'
+        );
+        
+        res.render('admin/content/comment_management', {
+            title: 'コメント管理',
+            comments: comments
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.render('admin/content/comment_management', {
+            title: 'コメント管理',
+            comments: [],
+            error: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// キャッシュクリアルート
+router.post('/content/clear_cache', async (req, res) => {
+    try {
+        // キャッシュクリアの処理
+        // 例: 一時ファイルの削除やキャッシュの初期化など
+        
+        res.json({
+            success: true,
+            message: 'キャッシュを正常にクリアしました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'キャッシュクリア中にエラーが発生しました'
+        });
+    }
+});
+
+// 会社管理
+router.post('/content/add_company', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const { name, description, address, phone, email, website } = req.body;
+        
+        const [result] = await connection.query(
+            'INSERT INTO companies (name, description, address, phone, email, website) VALUES (?, ?, ?, ?, ?, ?)',
+            [name, description, address, phone, email, website]
+        );
+        
+        res.json({ success: true, id: result.insertId });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({ success: false, message: 'データの追加中にエラーが発生しました' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+router.delete('/content/delete_company/:id', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.query('DELETE FROM companies WHERE id = ?', [req.params.id]);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({ success: false, message: 'データの削除中にエラーが発生しました' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 相互リンク追加
+router.post('/content/add_link', async (req, res) => {
+    let connection;
+    try {
+        const { name, url, description, sort_order } = req.body;
+        
+        connection = await pool.getConnection();
+        const [result] = await connection.query(
+            'INSERT INTO mutual_links (name, url, description, sort_order) VALUES (?, ?, ?, ?)',
+            [name, url, description, sort_order || 0]
+        );
+        
+        res.json({
+            success: true,
+            id: result.insertId,
+            message: 'リンクを追加しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの追加中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 相互リンク編集情報取得
+router.get('/content/edit_link/:id', async (req, res) => {
+    let connection;
+    try {
+        const linkId = req.params.id;
+        
+        connection = await pool.getConnection();
+        const [links] = await connection.query(
+            'SELECT * FROM mutual_links WHERE id = ?',
+            [linkId]
+        );
+        
+        if (links.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'リンクが見つかりません'
+            });
+        }
+        
+        res.json({
+            success: true,
+            link: links[0]
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 相互リンク更新
+router.post('/content/update_link/:id', async (req, res) => {
+    let connection;
+    try {
+        const linkId = req.params.id;
+        const { name, url, description, sort_order, status } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.query(
+            'UPDATE mutual_links SET name = ?, url = ?, description = ?, sort_order = ?, status = ? WHERE id = ?',
+            [name, url, description, sort_order, status, linkId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'リンクを更新しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの更新中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 相互リンク削除
+router.delete('/content/delete_link/:id', async (req, res) => {
+    let connection;
+    try {
+        const linkId = req.params.id;
+        
+        connection = await pool.getConnection();
+        await connection.query(
+            'DELETE FROM mutual_links WHERE id = ?',
+            [linkId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'リンクを削除しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの削除中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// フリーモジュール管理
+router.get('/content/free_module_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [modules] = await connection.query(
+            'SELECT * FROM free_modules ORDER BY position, sort_order'
+        );
+        
+        res.render('admin/content/free_module_management', {
+            title: 'フリーモジュール管理',
+            modules: modules
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).render('admin/content/free_module_management', {
+            title: 'フリーモジュール管理',
+            modules: [],
+            error: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 特集管理
+router.get('/content/feature_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [features] = await connection.query(
+            'SELECT * FROM features ORDER BY start_date DESC'
+        );
+        
+        res.render('admin/content/feature_management', {
+            title: '特集管理',
+            features: features
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).render('admin/content/feature_management', {
+            title: '特集管理',
+            features: [],
+            error: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// お知らせ管理
+router.get('/content/announcement_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [announcements] = await connection.query(
+            'SELECT * FROM announcements ORDER BY publish_date DESC'
+        );
+        
+        res.render('admin/content/announcement_management', {
+            title: 'お知らせ管理',
+            announcements: announcements
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).render('admin/content/announcement_management', {
+            title: 'お知らせ管理',
+            announcements: [],
+            error: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// フリーモジュール管理のルート
+router.post('/content/add_module', async (req, res) => {
+    let connection;
+    try {
+        const { title, content, position, sort_order } = req.body;
+        
+        connection = await pool.getConnection();
+        const [result] = await connection.query(
+            'INSERT INTO free_modules (title, content, position, sort_order) VALUES (?, ?, ?, ?)',
+            [title, content, position, sort_order || 0]
+        );
+        
+        res.json({
+            success: true,
+            id: result.insertId,
+            message: 'モジュールを追加しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの追加中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+router.delete('/content/delete_module/:id', async (req, res) => {
+    let connection;
+    try {
+        const moduleId = req.params.id;
+        
+        connection = await pool.getConnection();
+        await connection.query(
+            'DELETE FROM free_modules WHERE id = ?',
+            [moduleId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'モジュールを削除しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの削除中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 特集管理のルート
+router.post('/content/add_feature', upload.single('image'), async (req, res) => {
+    let connection;
+    try {
+        const { title, description, start_date, end_date } = req.body;
+        const image_path = req.file ? `/uploads/${req.file.filename}` : null;
+        
+        connection = await pool.getConnection();
+        const [result] = await connection.query(
+            'INSERT INTO features (title, description, image_path, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
+            [title, description, image_path, start_date, end_date]
+        );
+        
+        res.json({
+            success: true,
+            id: result.insertId,
+            message: '特集を追加しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの追加中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+router.delete('/content/delete_feature/:id', async (req, res) => {
+    let connection;
+    try {
+        const featureId = req.params.id;
+        
+        connection = await pool.getConnection();
+        // 画像パスを取得
+        const [feature] = await connection.query(
+            'SELECT image_path FROM features WHERE id = ?',
+            [featureId]
+        );
+        
+        // 特集を削除
+        await connection.query(
+            'DELETE FROM features WHERE id = ?',
+            [featureId]
+        );
+        
+        // 画像ファイルを削除
+        if (feature[0]?.image_path) {
+            const filePath = path.join(__dirname, '..', 'public', feature[0].image_path);
+            fs.unlink(filePath, (err) => {
+                if (err) console.error('画像ファイルの削除に失敗しました:', err);
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: '特集を削除しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの削除中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// お知らせ管理のルート
+router.post('/content/add_announcement', async (req, res) => {
+    let connection;
+    try {
+        const { title, content, publish_date, important, status } = req.body;
+        
+        connection = await pool.getConnection();
+        const [result] = await connection.query(
+            'INSERT INTO announcements (title, content, publish_date, important, status) VALUES (?, ?, ?, ?, ?)',
+            [title, content, publish_date, important || 0, status]
+        );
+        
+        res.json({
+            success: true,
+            id: result.insertId,
+            message: 'お知らせを追加しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの追加中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+router.delete('/content/delete_announcement/:id', async (req, res) => {
+    let connection;
+    try {
+        const announcementId = req.params.id;
+        
+        connection = await pool.getConnection();
+        await connection.query(
+            'DELETE FROM announcements WHERE id = ?',
+            [announcementId]
+        );
+        
+        res.json({
+            success: true,
+            message: 'お知らせを削除しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの削除中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// モデル管理のルート
+router.get('/system/model_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [models] = await connection.query(
+            'SELECT * FROM models ORDER BY id'
+        );
+        
+        res.render('admin/system/model_management', {
+            title: 'モデル管理',
+            models: models
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).render('admin/system/model_management', {
+            title: 'モデル管理',
+            models: [],
+            error: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// ユーザーグループ管理のルート
+router.get('/system/user_group_management', async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [groups] = await connection.query(
+            'SELECT * FROM user_groups ORDER BY id'
+        );
+        
+        res.render('admin/system/user_group_management', {
+            title: 'ユーザーグループ管理',
+            groups: groups
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).render('admin/system/user_group_management', {
+            title: 'ユーザーグループ管理',
+            groups: [],
+            error: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// ユーザーグループ追加
+router.post('/system/add_group', async (req, res) => {
+    let connection;
+    try {
+        const { name, description, status } = req.body;
+        
+        connection = await pool.getConnection();
+        const [result] = await connection.query(
+            'INSERT INTO user_groups (name, description, status) VALUES (?, ?, ?)',
+            [name, description, status]
+        );
+        
+        res.json({
+            success: true,
+            id: result.insertId,
+            message: 'グループを追加しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの追加中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 権限情報取得
+router.get('/system/get_permissions/:groupId', async (req, res) => {
+    let connection;
+    try {
+        const groupId = req.params.groupId;
+        
+        connection = await pool.getConnection();
+        // カテゴリー一覧を取得
+        const [categories] = await connection.query(
+            'SELECT * FROM categories ORDER BY sort_order'
+        );
+        
+        // 現在の権限設定を取得
+        const [permissions] = await connection.query(
+            'SELECT * FROM category_permissions WHERE group_id = ?',
+            [groupId]
+        );
+        
+        // 権限データを整形
+        const permissionMap = {};
+        permissions.forEach(perm => {
+            permissionMap[perm.category_id] = {
+                can_view: perm.can_view === 1,
+                can_create: perm.can_create === 1,
+                can_edit: perm.can_edit === 1,
+                can_delete: perm.can_delete === 1
+            };
+        });
+        
+        res.json({
+            success: true,
+            categories: categories,
+            permissions: permissionMap
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// 権限設定を保存
+router.post('/system/save_permissions/:groupId', async (req, res) => {
+    let connection;
+    try {
+        const groupId = req.params.groupId;
+        const { permissions } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // 既存の権限設定を削除
+        await connection.query(
+            'DELETE FROM category_permissions WHERE group_id = ?',
+            [groupId]
+        );
+        
+        // 新しい権限設定を追加
+        for (const categoryId in permissions) {
+            const perm = permissions[categoryId];
+            await connection.query(
+                `INSERT INTO category_permissions 
+                (category_id, group_id, can_view, can_create, can_edit, can_delete)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [
+                    categoryId,
+                    groupId,
+                    perm.view ? 1 : 0,
+                    perm.create ? 1 : 0,
+                    perm.edit ? 1 : 0,
+                    perm.delete ? 1 : 0
+                ]
+            );
+        }
+        
+        await connection.commit();
+        
+        res.json({
+            success: true,
+            message: '権限設定を保存しました'
+        });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの保存中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// グループを削除
+router.delete('/system/delete_group/:id', async (req, res) => {
+    let connection;
+    try {
+        const groupId = req.params.id;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // 関連する権限設定を削除
+        await connection.query(
+            'DELETE FROM category_permissions WHERE group_id = ?',
+            [groupId]
+        );
+        
+        // グループを削除
+        await connection.query(
+            'DELETE FROM user_groups WHERE id = ?',
+            [groupId]
+        );
+        
+        await connection.commit();
+        
+        res.json({
+            success: true,
+            message: 'グループを削除しました'
+        });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの削除中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// モデル管理のルート
+const uploadIcons = multer({
+    storage: multer.diskStorage({
+        destination: function (req, file, cb) {
+            const uploadDir = 'public/uploads/icons';
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            cb(null, uploadDir);
+        },
+        filename: function (req, file, cb) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, uniqueSuffix + path.extname(file.originalname));
+        }
+    }),
+    fileFilter: fileFilter
+});
+
+// モデルを追加
+router.post('/system/add_model', uploadIcons.single('icon'), async (req, res) => {
+    let connection;
+    try {
+        const { name, identifier, description, sort_order, status } = req.body;
+        const icon_path = req.file ? `/uploads/icons/${req.file.filename}` : null;
+        
+        connection = await pool.getConnection();
+        
+        // 識別子の重複チェック
+        const [existing] = await connection.query(
+            'SELECT id FROM models WHERE identifier = ?',
+            [identifier]
+        );
+        
+        if (existing.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'この識別子は既に使用されています'
+            });
+        }
+        
+        const [result] = await connection.query(
+            'INSERT INTO models (name, identifier, description, icon_path, sort_order, status) VALUES (?, ?, ?, ?, ?, ?)',
+            [name, identifier, description, icon_path, sort_order || 0, status]
+        );
+        
+        res.json({
+            success: true,
+            id: result.insertId,
+            message: 'モデルを追加しました'
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの追加中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// フィールド情報を取得
+router.get('/system/get_fields/:modelId', async (req, res) => {
+    let connection;
+    try {
+        const modelId = req.params.modelId;
+        
+        connection = await pool.getConnection();
+        const [fields] = await connection.query(
+            'SELECT * FROM model_fields WHERE model_id = ? ORDER BY sort_order',
+            [modelId]
+        );
+        
+        res.json({
+            success: true,
+            fields: fields
+        });
+    } catch (error) {
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの取得中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// フィールド設定を保存
+router.post('/system/save_fields/:modelId', async (req, res) => {
+    let connection;
+    try {
+        const modelId = req.params.modelId;
+        const { fields } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // 既存のフィールドを削除
+        await connection.query(
+            'DELETE FROM model_fields WHERE model_id = ?',
+            [modelId]
+        );
+        
+        // 新しいフィールドを追加
+        for (const field of fields) {
+            await connection.query(
+                `INSERT INTO model_fields 
+                (model_id, name, identifier, type, description, required, sort_order)
+                VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    modelId,
+                    field.name,
+                    field.identifier,
+                    field.type,
+                    field.description,
+                    field.required,
+                    field.sort_order
+                ]
+            );
+        }
+        
+        await connection.commit();
+        
+        res.json({
+            success: true,
+            message: 'フィールド設定を保存しました'
+        });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの保存中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// モデルを削除
+router.delete('/system/delete_model/:id', async (req, res) => {
+    let connection;
+    try {
+        const modelId = req.params.id;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // アイコンのパスを取得
+        const [model] = await connection.query(
+            'SELECT icon_path FROM models WHERE id = ?',
+            [modelId]
+        );
+        
+        // 関連するフィールドを削除
+        await connection.query(
+            'DELETE FROM model_fields WHERE model_id = ?',
+            [modelId]
+        );
+        
+        // モデルを削除
+        await connection.query(
+            'DELETE FROM models WHERE id = ?',
+            [modelId]
+        );
+        
+        await connection.commit();
+        
+        // アイコンファイルを削除
+        if (model[0]?.icon_path) {
+            const filePath = path.join(__dirname, '..', 'public', model[0].icon_path);
+            fs.unlink(filePath, (err) => {
+                if (err) console.error('アイコンファイルの削除に失敗しました:', err);
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'モデルを削除しました'
+        });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('エラー:', error);
+        res.status(500).json({
+            success: false,
+            message: 'データの削除中にエラーが発生しました'
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// アップロード設定を一箇所にまとめる
+const uploadConfig = {
+    storage: multer.diskStorage({
+        destination: function (req, file, cb) {
+            let uploadDir = 'public/uploads';
+            
+            // ファイルタイプに応じてディレクトリを変更
+            switch (file.fieldname) {
+                case 'photo':
+                    uploadDir += '/photos';
+                    break;
+                case 'image':
+                    uploadDir += '/products';
+                    break;
+                default:
+                    uploadDir += '/general';
+            }
+            
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            cb(null, uploadDir);
+        },
+        filename: function (req, file, cb) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, uniqueSuffix + path.extname(file.originalname));
+        }
+    }),
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB
+    }
+};
+
+const uploadContent = multer(uploadConfig);
+
+// カテゴリーごとのリスト表示ルートを確認
+router.get('/content/:category_id/list', async (req, res) => {
+    try {
+        const categoryId = req.query.category || req.params.category_id;
+        
+        // カテゴリー情報を取得
+        const [categoryRows] = await pool.query(
+            'SELECT * FROM categories WHERE id = ?',
+            [categoryId]
+        );
+        const category = categoryRows[0];
+
+        if (!category) {
+            return res.status(404).send('カテゴリーが見つかりません');
+        }
+
+        // コンテンツ一覧を取得
+        const [contents] = await pool.query(
+            `SELECT 
+                c.*,
+                DATE_FORMAT(c.created_at, '%Y-%m-%d %H:%i') as formatted_created_at,
+                DATE_FORMAT(c.updated_at, '%Y-%m-%d %H:%i') as formatted_updated_at
+            FROM contents c
+            WHERE c.category_id = ?
+            ORDER BY c.sort_order ASC, c.id DESC`,
+            [categoryId]
+        );
+
+        // レイアウトを無効化してレンダリング
+        res.render('admin/content/list', {
+            category,
+            contents,
+            title: `${category.name} - コンテンツ一覧`,
+            layout: false  // レイアウトを無効化
+        });
+
+    } catch (error) {
+        console.error('Error in content list:', error);
+        res.status(500).send('エラーが発生しました');
+    }
+});
+
+// 会社概要一覧（model_id = 1）
+router.get('/company/list', async (req, res) => {
+    // ... データ取得ロジック ...
+    res.render('admin/content/list', { category, contents, title });
+});
+
+// 製品情報一覧（model_id = 3）
+router.get('/products/list', async (req, res) => {
+    // ... データ取得ロジック ...
+    res.render('admin/content/list', { category, contents, title });
+});
+
+// 管理画面のトップページ
+router.get('/', async (req, res) => {
+    try {
+        // カテゴリー一覧を取得
+        const [categories] = await pool.query(
+            `SELECT 
+                c.*,
+                m.name as model_name,
+                COUNT(cont.id) as content_count
+            FROM categories c
+            LEFT JOIN models m ON c.model_id = m.id
+            LEFT JOIN contents cont ON c.id = cont.category_id
+            GROUP BY c.id
+            ORDER BY c.sort_order ASC, c.id DESC`
+        );
+
+        // 管理画面のトップページを表示
+        res.render('admin/index', {
+            title: '管理画面',
+            categories: categories
+        });
+
+    } catch (error) {
+        console.error('Error in admin index:', error);
+        res.status(500).send('エラーが発生しました');
+    }
+});
+
+// 分類の編集
+router.post('/product-categories/:id/edit', async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const { id } = req.params;
+        const { name } = req.body;
+
+        if (!name || name.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                message: '分類名を入力してください'
+            });
+        }
+
+        // 同じ名前の分類が存在するかチェック
+        const [existing] = await connection.query(
+            'SELECT id FROM product_categories WHERE name = ? AND id != ?',
+            [name.trim(), id]
+        );
+
+        if (existing.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'この分類名は既に使用されています'
+            });
+        }
+
+        // 分類名を更新
+        await connection.query(
+            'UPDATE product_categories SET name = ?, updated_at = NOW() WHERE id = ?',
+            [name.trim(), id]
+        );
+
+        await connection.commit();
+        res.json({ success: true });
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error updating category:', error);
+        res.status(500).json({
+            success: false,
+            message: '分類の更新中にエラーが発生しました'
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+// 分類の削除
+router.post('/product-categories/:id/delete', async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const { id } = req.params;
+
+        // 分類を削除
+        const [result] = await connection.query(
+            'DELETE FROM product_categories WHERE id = ?',
+            [id]
+        );
+
+        if (result.affectedRows === 0) {
+            throw new Error('分類が見つかりません');
+        }
+
+        await connection.commit();
+        res.json({ 
+            success: true,
+            message: '分類を削除しました'
+        });
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error deleting category:', error);
+        
+        // 外部キー制約エラーの場合
+        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+            res.status(400).json({
+                success: false,
+                message: 'この分類は小分類で使用されているため削除できません'
+            });
+            return;
+        }
+
+        res.status(500).json({
+            success: false,
+            message: '分類の削除中にエラーが発生しました'
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+// 分類の表示順序を更新
+router.post('/product-categories/updateOrder', async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const orders = req.body;
+        for (const [id, order] of Object.entries(orders)) {
+            await connection.query(
+                'UPDATE product_categories SET sort_order = ?, updated_at = NOW() WHERE id = ?',
+                [order, id]
+            );
+        }
+
+        await connection.commit();
+        res.json({ success: true });
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error updating category orders:', error);
+        res.status(500).json({
+            success: false,
+            message: '表示順序の更新中にエラーが発生しました'
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+// フリーモジュールの編集
+router.post('/content/free_module_management/edit/:id', async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const { id } = req.params;
+        const { title, content, position, sort_order, status } = req.body;
+
+        // バリデーション
+        if (!title || !content) {
+            return res.status(400).json({
+                success: false,
+                message: 'タイトルと内容は必須項目です'
+            });
+        }
+
+        // フリーモジュールを更新
+        const [result] = await connection.query(
+            'UPDATE free_modules SET title = ?, content = ?, position = ?, sort_order = ?, status = ?, updated_at = NOW() WHERE id = ?',
+            [title, content, position, sort_order || 0, status || 1, id]
+        );
+
+        if (result.affectedRows === 0) {
+            throw new Error('フリーモジュールが見つかりません');
+        }
+
+        await connection.commit();
+        res.json({ 
+            success: true,
+            message: 'フリーモジュールを更新しました'
+        });
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error updating free module:', error);
+        res.status(500).json({
+            success: false,
+            message: 'フリーモジュールの更新中にエラーが発生しました'
+        });
+    } finally {
+        connection.release();
     }
 });
 

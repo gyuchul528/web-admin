@@ -6,8 +6,18 @@
     <title>ページ追加</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- CKEditor CDN -->
-    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
+    <!-- Quill.js CDN -->
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <style>
+        /* Quill.js用スタイル */
+        #editor-container {
+            height: 400px;
+            margin-bottom: 1rem;
+        }
+        .ql-editor {
+            min-height: 350px;
+        }
+    </style>
 </head>
 <body>
     <div class="container-fluid mt-4">
@@ -26,8 +36,9 @@
                             </div>
 
                             <div class="mb-3">
-                                <label for="content" class="form-label">内容：</label>
-                                <textarea class="form-control" id="content" name="content" required></textarea>
+                                <label for="editor-container" class="form-label">内容：</label>
+                                <div id="editor-container"></div>
+                                <input type="hidden" id="content" name="content" required>
                             </div>
 
                             <div class="mb-3">
@@ -84,36 +95,77 @@
 
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Quill.js -->
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
     
     <script>
-        // CKEditorの初期化
-        CKEDITOR.replace('content', {
-            height: 400,
-            removePlugins: 'elementspath,resize',
-            toolbarGroups: [
-                { name: 'document', groups: [ 'mode', 'document', 'doctools' ] },
-                { name: 'clipboard', groups: [ 'clipboard', 'undo' ] },
-                { name: 'editing', groups: [ 'find', 'selection', 'spellchecker', 'editing' ] },
-                { name: 'forms', groups: [ 'forms' ] },
-                '/',
-                { name: 'basicstyles', groups: [ 'basicstyles', 'cleanup' ] },
-                { name: 'paragraph', groups: [ 'list', 'indent', 'blocks', 'align', 'bidi', 'paragraph' ] },
-                { name: 'links', groups: [ 'links' ] },
-                { name: 'insert', groups: [ 'insert' ] },
-                '/',
-                { name: 'styles', groups: [ 'styles' ] },
-                { name: 'colors', groups: [ 'colors' ] },
-                { name: 'tools', groups: [ 'tools' ] },
-                { name: 'others', groups: [ 'others' ] }
-            ]
+        // Quill.jsの初期化
+        const quill = new Quill('#editor-container', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['blockquote', 'code-block'],
+                    [{ 'header': 1 }, { 'header': 2 }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }],
+                    [{ 'indent': '-1'}, { 'indent': '+1' }],
+                    [{ 'direction': 'rtl' }],
+                    [{ 'size': ['small', false, 'large', 'huge'] }],
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'font': [] }],
+                    [{ 'align': [] }],
+                    ['clean'],
+                    ['link', 'image', 'video']
+                ]
+            },
+            placeholder: 'ページの内容を入力してください...'
+        });
+
+        // 画像アップロード機能の設定
+        const toolbar = quill.getModule('toolbar');
+        toolbar.addHandler('image', function() {
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*');
+            input.click();
+            
+            input.onchange = async () => {
+                const file = input.files[0];
+                if (file) {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    
+                    try {
+                        const response = await fetch('/admin/upload-image', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const result = await response.json();
+                        if (result.success && result.url) {
+                            const range = quill.getSelection();
+                            quill.insertEmbed(range.index, 'image', result.url);
+                        } else {
+                            alert('画像のアップロードに失敗しました');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('画像のアップロードに失敗しました');
+                    }
+                }
+            };
         });
 
         document.getElementById('pageForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Quill.jsからコンテンツを取得
+            document.getElementById('content').value = quill.root.innerHTML;
+            
             const formData = {
                 title: document.getElementById('title').value,
-                content: CKEDITOR.instances.content.getData(),
+                content: document.getElementById('content').value,
                 sort_order: document.getElementById('sort_order').value,
                 status: document.getElementById('status').value
             };

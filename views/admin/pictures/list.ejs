@@ -1,289 +1,234 @@
-<%- include('../../partials/admin/header') %>
-
-<div class="container-fluid">
-    <div class="row">
-        <!-- サイドバーを削除 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>写真アルバム管理</title>
+    <!-- Bootstrap 5.3.0 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding: 0;
+            margin: 0;
+        }
         
-        <main class="col-md-12 px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">写真アルバム管理</h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group me-2">
-                        <a href="/admin/pictures/<%= category.id %>/subcategories" class="btn btn-sm btn-outline-secondary">サブカテゴリー管理</a>
-                        <a href="/admin/pictures/<%= category.id %>/album/add" class="btn btn-sm btn-outline-primary">新規アルバム作成</a>
-                    </div>
+        .container-fluid {
+            padding: 1.5rem;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: #1696d7;
+            border-bottom: none;
+            color: white;
+        }
+
+        .table > :not(caption) > * > * {
+            padding: 1rem;
+        }
+
+        .thumbnail-preview {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+        }
+
+        .thumbnail-placeholder {
+            width: 50px;
+            height: 50px;
+            background-color: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">写真アルバム管理</h1>
+                <div class="btn-group">
+                    <a href="/admin/pictures/<%= category.id %>/subcategories" 
+                       class="btn btn-light">サブカテゴリー管理</a>
+                    <a href="/admin/pictures/<%= category.id %>/album/add" 
+                       class="btn btn-light">新規アルバム作成</a>
                 </div>
             </div>
 
-            <% if (typeof message !== 'undefined' && message) { %>
-                <div class="alert alert-<%= messageType || 'info' %> alert-dismissible fade show" role="alert">
-                    <%= message %>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <% } %>
+            <div class="card-body">
+                <% if (typeof message !== 'undefined' && message) { %>
+                    <div class="alert alert-<%= messageType || 'info' %> alert-dismissible fade show" role="alert">
+                        <%= message %>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <% } %>
 
-            <div class="table-responsive">
-                <table class="table table-striped table-sm">
-                    <thead>
-                        <tr>
-                            <th scope="col">ID</th>
-                            <th scope="col">サムネイル</th>
-                            <th scope="col">アルバム名</th>
-                            <th scope="col">説明</th>
-                            <th scope="col">写真数</th>
-                            <th scope="col">作成日</th>
-                            <th scope="col">更新日</th>
-                            <th scope="col">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% if (albums && albums.length > 0) { %>
-                            <% albums.forEach(function(album) { %>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>サムネイル</th>
+                                <th>アルバム名</th>
+                                <th>説明</th>
+                                <th>写真数</th>
+                                <th>作成日</th>
+                                <th>更新日</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (albums && albums.length > 0) { %>
+                                <% albums.forEach(function(album) { %>
+                                    <tr>
+                                        <td><%= album.id %></td>
+                                        <td>
+                                            <% if (album.thumbnail_url) { %>
+                                                <img src="<%= album.thumbnail_url %>" 
+                                                     alt="<%= album.name %>" 
+                                                     class="thumbnail-preview rounded">
+                                            <% } else { %>
+                                                <div class="thumbnail-placeholder rounded">
+                                                    No Image
+                                                </div>
+                                            <% } %>
+                                        </td>
+                                        <td><%= album.name %></td>
+                                        <td><%= album.description || '-' %></td>
+                                        <td><%= album.photo_count || 0 %></td>
+                                        <td><%= album.formatted_created_at %></td>
+                                        <td><%= album.formatted_updated_at %></td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="/admin/pictures/<%= category.id %>/album/<%= album.id %>/photos" 
+                                                   class="btn btn-sm btn-outline-primary">写真管理</a>
+                                                <a href="/admin/pictures/<%= category.id %>/album/edit/<%= album.id %>" 
+                                                   class="btn btn-sm btn-outline-secondary">編集</a>
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-danger delete-album" 
+                                                        data-id="<%= album.id %>" 
+                                                        data-name="<%= album.name %>">削除</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            <% } else { %>
                                 <tr>
-                                    <td><%= album.id %></td>
-                                    <td>
-                                        <% if (album.thumbnail_url) { %>
-                                            <img src="<%= album.thumbnail_url %>" alt="<%= album.name %>" width="50" height="50" class="img-thumbnail">
-                                        <% } else { %>
-                                            <div class="bg-light text-center" style="width: 50px; height: 50px; line-height: 50px;">No Image</div>
-                                        <% } %>
-                                    </td>
-                                    <td><%= album.name %></td>
-                                    <td><%= album.description || '-' %></td>
-                                    <td><%= album.photo_count || 0 %></td>
-                                    <td><%= album.formatted_created_at %></td>
-                                    <td><%= album.formatted_updated_at %></td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="/admin/pictures/<%= category.id %>/album/<%= album.id %>/photos" class="btn btn-outline-primary">写真管理</a>
-                                            <a href="/admin/pictures/<%= category.id %>/album/edit/<%= album.id %>" class="btn btn-outline-secondary">編集</a>
-                                            <button type="button" class="btn btn-outline-danger delete-album" data-id="<%= album.id %>" data-name="<%= album.name %>">削除</button>
-                                        </div>
+                                    <td colspan="8" class="text-center py-4">
+                                        アルバムがありません。新しいアルバムを作成してください。
                                     </td>
                                 </tr>
-                            <% }); %>
-                        <% } else { %>
-                            <tr>
-                                <td colspan="8" class="text-center">アルバムがありません。新しいアルバムを作成してください。</td>
-                            </tr>
-                        <% } %>
-                    </tbody>
-                </table>
-            </div>
-        </main>
-    </div>
-</div>
-
-<!-- 削除確認モーダル -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">アルバム削除の確認</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>アルバム「<span id="albumName"></span>」を削除してもよろしいですか？</p>
-                <p class="text-danger">この操作は取り消せません。アルバム内の全ての写真も削除されます。</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                <button type="button" class="btn btn-danger" id="confirmDelete">削除する</button>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 結果メッセージ表示用の要素を追加
-        const resultContainer = document.createElement('div');
-        resultContainer.id = 'resultMessage';
-        resultContainer.className = 'alert alert-dismissible fade';
-        resultContainer.style.display = 'none';
-        resultContainer.innerHTML = `
-            <span id="resultMessageText"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        document.querySelector('main').insertBefore(resultContainer, document.querySelector('.table-responsive'));
+    <!-- 削除確認モーダル -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">アルバム削除の確認</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>アルバム「<span id="albumName"></span>」を削除してもよろしいですか？</p>
+                    <p class="text-danger">この操作は取り消せません。アルバム内の全ての写真も削除されます。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="button" class="btn btn-danger" id="confirmDelete">削除する</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        // 結果メッセージを表示する関数
-        function showResultMessage(message, isSuccess) {
-            const resultMessage = document.getElementById('resultMessage');
-            const resultMessageText = document.getElementById('resultMessageText');
-            
-            // XSS対策: テキストコンテンツとして設定（innerHTML ではなく）
-            resultMessage.className = isSuccess 
-                ? 'alert alert-success alert-dismissible fade show' 
-                : 'alert alert-danger alert-dismissible fade show';
-            resultMessageText.textContent = message;
-            resultMessage.style.display = 'block';
-            
-            // 5秒後に自動的に閉じる
-            setTimeout(() => {
-                resultMessage.style.display = 'none';
-            }, 5000);
-        }
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-        // 削除ボタンのイベントリスナー
-        const deleteButtons = document.querySelectorAll('.delete-album');
-        const albumNameElement = document.getElementById('albumName');
-        const confirmDeleteButton = document.getElementById('confirmDelete');
-        let albumIdToDelete;
-        let deleteModal;
-
-        // Bootstrapモーダルの初期化
-        if (typeof bootstrap !== 'undefined') {
-            try {
-                deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-            } catch (error) {
-                console.error('Bootstrapモーダルの初期化に失敗しました:', error);
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // トースト通知を表示する関数
+            function showToast(message, isError = false) {
+                const toastContainer = document.createElement('div');
+                toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+                
+                const toastHtml = `
+                    <div class="toast align-items-center text-white ${isError ? 'bg-danger' : 'bg-success'}" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                ${message}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                `;
+                
+                toastContainer.innerHTML = toastHtml;
+                document.body.appendChild(toastContainer);
+                
+                const toast = new bootstrap.Toast(toastContainer.querySelector('.toast'));
+                toast.show();
+                
+                setTimeout(() => {
+                    document.body.removeChild(toastContainer);
+                }, 5000);
             }
-        }
 
-        // 削除ボタンにイベントリスナーを追加
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault(); // デフォルトの動作を防止
-                
-                // データ属性から安全に値を取得
-                albumIdToDelete = this.getAttribute('data-id');
-                const albumName = this.getAttribute('data-name');
-                
-                // 入力値の検証
-                if (!albumIdToDelete || isNaN(parseInt(albumIdToDelete))) {
-                    showResultMessage('無効なアルバムIDです', false);
-                    return;
-                }
-                
-                // XSS対策: テキストコンテンツとして設定
-                if (albumNameElement) {
-                    albumNameElement.textContent = albumName;
-                }
-                
-                // モーダルを表示
-                if (deleteModal) {
-                    try {
-                        deleteModal.show();
-                    } catch (error) {
-                        console.error('モーダル表示エラー:', error);
-                        // フォールバック: 標準の確認ダイアログを使用
-                        if (confirm(`アルバム「${albumName}」を削除してもよろしいですか？この操作は取り消せません。`)) {
-                            deleteAlbum(albumIdToDelete);
-                        }
+            // 削除ボタンのイベントリスナー
+            const deleteButtons = document.querySelectorAll('.delete-album');
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            const albumNameElement = document.getElementById('albumName');
+            const confirmDeleteButton = document.getElementById('confirmDelete');
+            let albumIdToDelete;
+
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    albumIdToDelete = this.dataset.id;
+                    albumNameElement.textContent = this.dataset.name;
+                    deleteModal.show();
+                });
+            });
+
+            confirmDeleteButton.addEventListener('click', async function() {
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 処理中...';
+
+                try {
+                    const response = await fetch(`/admin/pictures/<%= category.id %>/album/delete/${albumIdToDelete}`, {
+                        method: 'POST'
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast(result.message || 'アルバムが正常に削除されました');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        showToast(result.message || '削除に失敗しました', true);
                     }
-                } else {
-                    // Bootstrapが利用できない場合は標準の確認ダイアログを使用
-                    if (confirm(`アルバム「${albumName}」を削除してもよろしいですか？この操作は取り消せません。`)) {
-                        deleteAlbum(albumIdToDelete);
-                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('削除処理中にエラーが発生しました', true);
+                } finally {
+                    deleteModal.hide();
+                    this.disabled = false;
+                    this.innerHTML = '削除する';
                 }
             });
         });
-
-        // 削除処理を実行する関数
-        function deleteAlbum(albumId) {
-            // 入力値の再検証
-            if (!albumId || isNaN(parseInt(albumId))) {
-                showResultMessage('無効なアルバムIDです', false);
-                return;
-            }
-            
-            // ボタンを無効化して連打を防止
-            if (confirmDeleteButton) {
-                confirmDeleteButton.disabled = true;
-                confirmDeleteButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 処理中...';
-            }
-            
-            // CSRF対策（必要に応じて実装）
-            // const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
-            // 削除リクエストを送信
-            fetch(`/admin/pictures/<%= category.id %>/album/delete/${albumId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    // 'X-CSRF-Token': csrfToken
-                },
-                // credentials: 'same-origin' // Cookieを送信するために必要
-            })
-            .then(response => {
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        throw new Error('アルバムが見つかりません');
-                    } else if (response.status === 403) {
-                        throw new Error('この操作を実行する権限がありません');
-                    } else {
-                        throw new Error(`サーバーエラー: ${response.status}`);
-                    }
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data && data.success) {
-                    // 成功メッセージを表示
-                    showResultMessage(data.message || 'アルバムが正常に削除されました', true);
-                    
-                    // モーダルを閉じる
-                    if (deleteModal) {
-                        try {
-                            deleteModal.hide();
-                        } catch (error) {
-                            console.error('モーダル非表示エラー:', error);
-                        }
-                    }
-                    
-                    // 1秒後にページをリロード
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    // エラーメッセージを表示
-                    showResultMessage(data && data.message ? data.message : '削除に失敗しました', false);
-                    
-                    // モーダルを閉じる
-                    if (deleteModal) {
-                        try {
-                            deleteModal.hide();
-                        } catch (error) {
-                            console.error('モーダル非表示エラー:', error);
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showResultMessage('削除処理中にエラーが発生しました: ' + error.message, false);
-                
-                // モーダルを閉じる
-                if (deleteModal) {
-                    try {
-                        deleteModal.hide();
-                    } catch (modalError) {
-                        console.error('モーダル非表示エラー:', modalError);
-                    }
-                }
-            })
-            .finally(() => {
-                // ボタンを元に戻す
-                if (confirmDeleteButton) {
-                    confirmDeleteButton.disabled = false;
-                    confirmDeleteButton.innerHTML = '削除する';
-                }
-            });
-        }
-
-        // 削除確認ボタンのイベントリスナー
-        if (confirmDeleteButton) {
-            confirmDeleteButton.addEventListener('click', function(e) {
-                e.preventDefault(); // デフォルトの動作を防止
-                if (albumIdToDelete) {
-                    deleteAlbum(albumIdToDelete);
-                }
-            });
-        }
-    });
-</script>
-
-<%- include('../../partials/admin/footer') %> 
+    </script>
+</body>
+</html> 

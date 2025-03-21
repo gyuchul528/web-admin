@@ -29,7 +29,7 @@ pids
 Thumbs.db
 
 # アップロードされたファイル（必要に応じてコメントアウト）
-# public/uploads/
+uploads/
 
 # その他
 .tmp/

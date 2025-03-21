@@ -4,283 +4,297 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= category.name %> - 製品編集</title>
-    <!-- Bootstrap CSS -->
+    <!-- Bootstrap 5.3.0 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- CKEditor -->
-    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
-    <!-- カスタムCSS -->
+    <!-- Quill.js CDN -->
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <style>
-        .custom-file-button input[type="file"] {
-            margin-left: -2px !important;
+        #editor-container {
+            height: 400px;
+            margin-bottom: 1rem;
         }
-        .custom-file-button input[type="file"]::-webkit-file-upload-button {
-            display: none;
+        .ql-editor {
+            min-height: 350px;
         }
-        .custom-file-button input[type="file"]::file-selector-button {
-            display: none;
+        .thumbnail-preview {
+            max-width: 200px;
+            margin-top: 1rem;
         }
-        .custom-file-button label {
-            cursor: pointer;
+        .thumbnail-preview img {
+            max-width: 100%;
+            height: auto;
+        }
+        .thumbnail-actions {
+            margin-top: 0.5rem;
         }
     </style>
 </head>
 <body class="bg-light">
-    <div class="container py-5">
+    <div class="container-fluid py-4">
         <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h1 class="h3 mb-0"><%= category.name %> - 製品編集</h1>
+            </div>
+            
             <div class="card-body">
-                <h1 class="card-title h3 mb-4 pb-2 border-bottom">
-                    <%= category.name %> - 製品編集
-                </h1>
-
-                <form id="productForm">
-                    <input type="hidden" name="current_thumbnail" value="<%= product.thumbnail %>">
-                    
-                    <div class="row g-4">
-                        <!-- 製品名 -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">製品名</label>
-                                <input type="text" name="name" class="form-control" 
-                                       required value="<%= product.name %>">
-                            </div>
+                <form id="productForm" class="needs-validation" novalidate>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">製品名</label>
+                            <input type="text" name="name" class="form-control" 
+                                   value="<%= product.name %>" required>
+                            <div class="invalid-feedback">製品名を入力してください</div>
                         </div>
 
-                        <!-- 分類 -->
                         <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">分類</label>
-                                <select name="product_category_id" class="form-select" 
-                                        onchange="updateSubcategories(this.value)">
-                                    <option value="">選択してください</option>
-                                    <% productCategories.forEach(function(category) { %>
-                                        <option value="<%= category.id %>" 
-                                                <%= product.product_category_id == category.id ? 'selected' : '' %>>
-                                            <%= category.name %>
+                            <label class="form-label">分類</label>
+                            <select name="product_category_id" class="form-select" 
+                                    onchange="updateSubcategories(this.value)">
+                                <option value="">選択してください</option>
+                                <% productCategories.forEach(function(cat) { %>
+                                    <option value="<%= cat.id %>" 
+                                            <%= product.product_category_id === cat.id ? 'selected' : '' %>>
+                                        <%= cat.name %>
+                                    </option>
+                                <% }); %>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">小分類</label>
+                            <select name="subcategory_id" id="subcategory_select" class="form-select">
+                                <option value="">選択してください</option>
+                                <% if (subcategories) { %>
+                                    <% subcategories.forEach(function(sub) { %>
+                                        <option value="<%= sub.id %>" 
+                                                <%= product.subcategory_id === sub.id ? 'selected' : '' %>>
+                                            <%= sub.name %>
                                         </option>
                                     <% }); %>
-                                </select>
-                            </div>
+                                <% } %>
+                            </select>
                         </div>
 
-                        <!-- 小分類 -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">小分類</label>
-                                <select name="subcategory_id" id="subcategory_select" class="form-select">
-                                    <option value="">選択してください</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- 価格 -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">価格</label>
-                                <input type="number" name="price" class="form-control" 
-                                       min="0" step="1" value="<%= product.price || '' %>">
-                            </div>
-                        </div>
-
-                        <!-- サムネイル -->
                         <div class="col-12">
-                            <div class="form-group">
-                                <label class="form-label">サムネイル</label>
-                                <div class="d-flex flex-column gap-2">
-                                    <div class="custom-file-button">
-                                        <label class="btn btn-primary">
-                                            画像を選択
-                                            <input type="file" name="thumbnail" id="thumbnail" 
-                                                   accept="image/*" onchange="previewImage(this)" 
-                                                   class="d-none">
-                                        </label>
-                                    </div>
-                                    <div id="thumbnailPreview" class="mt-2" 
-                                         style="display: <%= product.thumbnail ? 'block' : 'none' %>;">
-                                        <img id="preview" src="<%= product.thumbnail %>" 
-                                             class="img-thumbnail" style="max-width: 200px;">
-                                        <div class="d-flex align-items-center gap-2 mt-2">
-                                            <span class="text-muted small" id="filename">
-                                                <%= product.thumbnail ? product.thumbnail.split('/').pop() : '' %>
-                                            </span>
-                                            <button type="button" class="btn btn-danger btn-sm" 
-                                                    onclick="cancelThumbnail()">
-                                                取り消し
-                                            </button>
-                                        </div>
-                                    </div>
+                            <label class="form-label">サムネイル</label>
+                            <div class="input-group">
+                                <input type="file" name="thumbnail" id="thumbnail" class="form-control" 
+                                       accept="image/*" onchange="previewImage(this)" style="display: none;">
+                                <button type="button" class="btn btn-outline-secondary" 
+                                        onclick="document.getElementById('thumbnail').click()">
+                                    画像を選択
+                                </button>
+                            </div>
+                            <div id="thumbnailPreview" class="thumbnail-preview" 
+                                 style="display: <%= product.thumbnail ? 'block' : 'none' %>;">
+                                <img id="preview" class="img-thumbnail" 
+                                     src="<%= product.thumbnail || '' %>">
+                                <div class="thumbnail-actions d-flex align-items-center gap-2">
+                                    <span class="text-muted small" id="filename"></span>
+                                    <button type="button" class="btn btn-danger btn-sm" 
+                                            onclick="cancelThumbnail()">
+                                        取り消し
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 概要 -->
-                        <div class="col-12">
-                            <div class="form-group">
-                                <label class="form-label">概要</label>
-                                <textarea name="summary" class="form-control" 
-                                          rows="3"><%= product.summary || '' %></textarea>
-                            </div>
-                        </div>
-
-                        <!-- 詳細説明 -->
-                        <div class="col-12">
-                            <div class="form-group">
-                                <label class="form-label">詳細説明</label>
-                                <textarea name="description" id="editor" 
-                                          class="form-control"><%= product.description || '' %></textarea>
-                            </div>
-                        </div>
-
-                        <!-- 状態 -->
                         <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">状態</label>
-                                <select name="status" class="form-select">
-                                    <option value="1" <%= product.status == 1 ? 'selected' : '' %>>公開</option>
-                                    <option value="0" <%= product.status == 0 ? 'selected' : '' %>>非公開</option>
-                                </select>
+                            <label class="form-label">価格</label>
+                            <div class="input-group">
+                                <span class="input-group-text">¥</span>
+                                <input type="number" name="price" class="form-control" 
+                                       value="<%= product.price || '' %>" min="0" step="1">
                             </div>
                         </div>
-                    </div>
 
-                    <!-- ボタン -->
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary">保存</button>
-                        <button type="button" onclick="history.back()" 
-                                class="btn btn-secondary">戻る</button>
+                        <div class="col-12">
+                            <label class="form-label">概要</label>
+                            <textarea name="summary" class="form-control" 
+                                      rows="3"><%= product.summary || '' %></textarea>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">商品説明</label>
+                            <div id="editor-container"></div>
+                            <input type="hidden" id="description" name="description" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">状態</label>
+                            <select name="status" class="form-select">
+                                <option value="1" <%= product.status ? 'selected' : '' %>>公開</option>
+                                <option value="0" <%= !product.status ? 'selected' : '' %>>非公開</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary">保存</button>
+                                <button type="button" onclick="history.back()" class="btn btn-secondary">戻る</button>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Quill.js -->
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
     
-    <!-- 既存のJavaScriptコード -->
     <script>
-        // 小分類データをJavaScriptオブジェクトとして保持
-        const subcategories = <%- JSON.stringify(subcategories) %>;
-        const currentSubcategoryId = <%= product.subcategory_id || 'null' %>;
-        
-        // CKEditorの初期化
-        CKEDITOR.replace('editor', {
-            language: 'ja',
-            height: 400
+        // Quill.jsの初期化と既存コンテンツの設定
+        const quill = new Quill('#editor-container', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline', 'strike'],
+                    ['blockquote', 'code-block'],
+                    [{ 'header': 1 }, { 'header': 2 }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }],
+                    [{ 'indent': '-1'}, { 'indent': '+1' }],
+                    [{ 'size': ['small', false, 'large', 'huge'] }],
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'font': [] }],
+                    [{ 'align': [] }],
+                    ['clean'],
+                    ['link', 'image']
+                ]
+            },
+            placeholder: '商品の説明を入力してください...'
         });
 
-        // ページ読み込み時に小分類を設定
-        document.addEventListener('DOMContentLoaded', function() {
-            const categoryId = document.querySelector('[name="product_category_id"]').value;
-            if (categoryId) {
-                updateSubcategories(categoryId);
-            }
-        });
+        // 既存の商品説明を設定
+        quill.root.innerHTML = `<%- product.description || '' %>`;
 
-        // 小分類の更新
-        function updateSubcategories(categoryId) {
-            const subcategorySelect = document.getElementById('subcategory_select');
-            subcategorySelect.innerHTML = '<option value="">選択してください</option>';
-            
-            if (!categoryId) {
-                subcategorySelect.disabled = true;
-                return;
-            }
-
-            const filteredSubcategories = subcategories.filter(sub => sub.category_id == categoryId);
-            
-            filteredSubcategories.forEach(sub => {
-                const option = document.createElement('option');
-                option.value = sub.id;
-                option.textContent = sub.name;
-                option.selected = sub.id == currentSubcategoryId;
-                subcategorySelect.appendChild(option);
-            });
-            
-            subcategorySelect.disabled = filteredSubcategories.length === 0;
-        }
-
-        // 画像プレビュー機能
+        // サムネイルプレビュー
         function previewImage(input) {
             const preview = document.getElementById('preview');
+            const filename = document.getElementById('filename');
             const previewContainer = document.getElementById('thumbnailPreview');
-            const filenameElement = document.getElementById('filename');
             
             if (input.files && input.files[0]) {
-                const file = input.files[0];
                 const reader = new FileReader();
-                
                 reader.onload = function(e) {
                     preview.src = e.target.result;
+                    filename.textContent = input.files[0].name;
                     previewContainer.style.display = 'block';
-                    filenameElement.textContent = file.name;
-                }
-                
-                reader.readAsDataURL(file);
+                };
+                reader.readAsDataURL(input.files[0]);
             }
         }
 
-        // サムネイル取り消し機能
+        // サムネイルの取り消し
         function cancelThumbnail() {
             const input = document.getElementById('thumbnail');
-            const preview = document.getElementById('preview');
             const previewContainer = document.getElementById('thumbnailPreview');
-            const filenameElement = document.getElementById('filename');
-            const currentThumbnail = document.querySelector('[name="current_thumbnail"]');
-            
             input.value = '';
-            preview.src = currentThumbnail.value;
-            filenameElement.textContent = currentThumbnail.value ? 
-                currentThumbnail.value.split('/').pop() : '';
-            previewContainer.style.display = currentThumbnail.value ? 'block' : 'none';
+            previewContainer.style.display = 'none';
         }
 
-        // フォーム送信処理
-        document.getElementById('productForm').onsubmit = async function(e) {
-            e.preventDefault();
+        // 小分類の更新処分を改善
+        async function updateSubcategories(categoryId) {
+            const select = document.getElementById('subcategory_select');
+            const errorDiv = document.getElementById('subcategory-error');
             
-            if (!this.name.value.trim()) {
-                alert('製品名を入力してください');
-                return;
-            }
+            // エラーメッセージをリセット
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
 
-            const formData = new FormData();
-            formData.append('name', this.name.value.trim());
-            formData.append('product_category_id', this.product_category_id.value);
-            formData.append('subcategory_id', this.subcategory_id.value);
-            formData.append('summary', this.summary.value.trim());
-            formData.append('description', CKEDITOR.instances.editor.getData().trim());
-            formData.append('price', this.price.value || '');
-            formData.append('status', this.status.value);
-            formData.append('current_thumbnail', this.current_thumbnail.value);
-            
-            const thumbnailFile = this.thumbnail.files[0];
-            if (thumbnailFile) {
-                formData.append('thumbnail', thumbnailFile);
+            // 選択をリセット
+            select.innerHTML = '<option value="">読み込み中...</option>';
+            select.disabled = true;
+
+            if (!categoryId) {
+                select.innerHTML = '<option value="">分類を選択してください</option>';
+                select.disabled = true;
+                return;
             }
 
             try {
-                const response = await fetch('/admin/products/<%= category.id %>/edit/<%= product.id %>', {
+                const response = await fetch(`/admin/product-categories/${categoryId}/subcategories`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+
+                // 小分類のオプションを更新
+                select.innerHTML = '<option value="">選択してください</option>';
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    data.forEach(sub => {
+                        const option = document.createElement('option');
+                        option.value = sub.id;
+                        option.textContent = sub.name;
+                        // 現在の小分類が選択されているかチェック
+                        if (sub.id === <%= product.subcategory_id || 'null' %>) {
+                            option.selected = true;
+                        }
+                        select.appendChild(option);
+                    });
+                    select.disabled = false;
+                } else {
+                    select.innerHTML = '<option value="">小分類がありません</option>';
+                    select.disabled = true;
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                select.innerHTML = '<option value="">選択してください</option>';
+                select.disabled = true;
+                errorDiv.textContent = 'データの取得に失敗しました。もう一度お試しください。';
+                errorDiv.style.display = 'block';
+                
+                // エラーメッセージを3秒後に消す
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // ページ読み込み時に現在の分類の小分類を読み込む
+        document.addEventListener('DOMContentLoaded', function() {
+            const categorySelect = document.querySelector('select[name="product_category_id"]');
+            if (categorySelect && categorySelect.value) {
+                updateSubcategories(categorySelect.value);
+            }
+        });
+
+        // フォーム送信
+        document.getElementById('productForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Quill.jsの内容を取得
+            document.getElementById('description').value = quill.root.innerHTML;
+            
+            const formData = new FormData(this);
+            
+            try {
+                const response = await fetch('/admin/products/edit/<%= product.id %>', {
                     method: 'POST',
                     body: formData
                 });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || '保存に失敗しました');
-                }
-                
+
                 const result = await response.json();
+                
                 if (result.success) {
-                    alert('製品を更新しました');
+                    alert('製品情報を更新しました');
                     window.location.href = '/admin/products/<%= category.id %>/list';
                 } else {
-                    alert(result.message || '更新に失敗しました');
+                    alert(result.message || '製品情報の更新に失敗しました');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert(error.message || '更新に失敗しました');
+                alert('製品情報の更新に失敗しました');
             }
-        };
+        });
     </script>
 </body>
 </html> 

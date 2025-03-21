@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= title %></title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <h2>メッセージ管理</h2>
+
+        <!-- メッセージ一覧テーブル -->
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>送信者</th>
+                    <th>件名</th>
+                    <th>メール</th>
+                    <th>日時</th>
+                    <th>状態</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% messages.forEach(function(message) { %>
+                <tr>
+                    <td><%= message.id %></td>
+                    <td><%= message.name %></td>
+                    <td><%= message.subject %></td>
+                    <td><%= message.email %></td>
+                    <td><%= message.created_at %></td>
+                    <td><%= message.status === 1 ? '既読' : '未読' %></td>
+                    <td>
+                        <button class="btn btn-sm btn-info view-btn" data-id="<%= message.id %>">表示</button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-id="<%= message.id %>">削除</button>
+                    </td>
+                </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- メッセージ表示モーダル -->
+    <div class="modal fade" id="viewMessageModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">メッセージ詳細</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="messageDetails"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

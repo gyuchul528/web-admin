@@ -15,4 +15,16 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* 管理画面専用のスタイルに限定 */
+.admin-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 他の管理画面専用スタイルを追加 */
+
 /* ... 残りのCSSコード ... */ 
